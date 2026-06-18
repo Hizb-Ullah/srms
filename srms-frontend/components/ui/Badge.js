@@ -1,23 +1,23 @@
 export default function Badge({ status }) {
   const styles = {
-    submitted:   'bg-blue-100 text-blue-800',
-    capturing:   'bg-yellow-100 text-yellow-800',
-    examination: 'bg-purple-100 text-purple-800',
-    approval:    'bg-orange-100 text-orange-800',
-    dispatch:    'bg-green-100 text-green-800',
-    archived:    'bg-gray-100 text-gray-800',
-    rework:      'bg-red-100 text-red-800',
-    pending:     'bg-gray-100 text-gray-600',
-    passed:      'bg-green-100 text-green-800',
-    failed:      'bg-red-100 text-red-800',
-    surveyor:    'bg-blue-100 text-blue-800',
-    officer:     'bg-purple-100 text-purple-800',
-    approver:    'bg-orange-100 text-orange-800',
-    admin:       'bg-red-100 text-red-800',
+    submitted:   'bg-sky-100 text-sky-700',
+    capturing:   'bg-amber-100 text-amber-700',
+    examination: 'bg-violet-100 text-violet-700',
+    approval:    'bg-orange-100 text-orange-700',
+    dispatch:    'bg-emerald-100 text-emerald-700',
+    archived:    'bg-slate-100 text-slate-600',
+    rework:      'bg-rose-100 text-rose-700',
+    pending:     'bg-slate-100 text-slate-500',
+    passed:      'bg-emerald-100 text-emerald-700',
+    failed:      'bg-rose-100 text-rose-700',
+    surveyor:    'bg-sky-100 text-sky-700',
+    officer:     'bg-violet-100 text-violet-700',
+    approver:    'bg-orange-100 text-orange-700',
+    admin:       'bg-rose-100 text-rose-700',
   }
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
       {status}
     </span>
   )

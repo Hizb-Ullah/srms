@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { loginUser } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
+import { ArrowLeft } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail]       = useState('')
@@ -35,24 +36,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-sky-50 flex items-center justify-center p-4">
+      <div className="absolute top-6 left-6">
+        <button
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-medium transition"
+        >
+          <ArrowLeft size={16} /> Back to Home
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100 border border-slate-100 w-full max-w-md p-8 hover:shadow-2xl hover:shadow-indigo-100 transition">
 
         <div className="text-center mb-8">
-          <div className="bg-blue-900 text-white rounded-xl p-4 mb-4 inline-block">
+          <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl p-4 mb-4 inline-block shadow-lg shadow-indigo-200">
             <h1 className="text-xl font-bold">SRMS</h1>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-2xl font-bold text-slate-800">
             Survey Record Management System
           </h2>
-          <p className="text-gray-500 mt-1">
+          <p className="text-slate-400 mt-1">
             Sign in to your account
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-600 mb-1">
               Email Address
             </label>
             <input
@@ -61,12 +71,12 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="Enter your email"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-600 mb-1">
               Password
             </label>
             <input
@@ -75,27 +85,27 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="Enter your password"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-200 active:scale-[0.98] transition disabled:opacity-50"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
+        <p className="text-center text-slate-500 text-sm mt-6">
           Don&apos;t have an account?{' '}
-          <a href="/register" className="text-blue-900 font-medium hover:underline">
+          <a href="/register" className="text-indigo-600 font-medium hover:underline">
             Create Account
           </a>
         </p>
 
-        <p className="text-center text-gray-400 text-sm mt-3">
+        <p className="text-center text-slate-300 text-xs mt-3">
           Secure Access Only
         </p>
       </div>

@@ -2,16 +2,17 @@
 
 import { useAuth } from '@/context/AuthContext'
 import Badge from '@/components/ui/Badge'
+import TopBar from '@/components/layout/TopBar'
 
 export default function Navbar({ title }) {
   const { user } = useAuth()
 
   return (
-    <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-      <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-      <div className="flex items-center gap-3">
+    <div>
+      <TopBar title={title} />
+      <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center justify-end gap-3">
         <Badge status={user?.role} />
-        <span className="text-sm text-gray-600">{user?.name}</span>
+        <span className="text-sm text-slate-600 font-medium">{user?.name}</span>
       </div>
     </div>
   )

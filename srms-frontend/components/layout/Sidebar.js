@@ -47,28 +47,29 @@ export default function Sidebar() {
   const items = menuItems[user.role] || []
 
   return (
-    <div className="w-64 min-h-screen bg-blue-900 text-white flex flex-col">
-      <div className="p-6 border-b border-blue-800">
-        <h1 className="text-xl font-bold">SRMS</h1>
-        <p className="text-blue-300 text-xs mt-1">Survey Record Management</p>
+    <div className="w-64 min-h-screen bg-gradient-to-b from-indigo-950 to-slate-900 text-white flex flex-col">
+      <div className="p-6 border-b border-white/10">
+        <h1 className="text-xl font-bold tracking-tight">SRMS</h1>
+        <p className="text-indigo-300 text-xs mt-1">Survey Record Management</p>
       </div>
 
-      <div className="p-4 border-b border-blue-800">
+      <div className="p-4 border-b border-white/10">
         <p className="font-semibold text-sm">{user.name}</p>
-        <p className="text-blue-300 text-xs capitalize">{user.role}</p>
+        <p className="text-indigo-300 text-xs capitalize">{user.role}</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-3 space-y-1">
         {items.map((item) => {
           const Icon = item.icon
+          const active = pathname === item.path
           return (
             <button
               key={item.path}
               onClick={() => router.push(item.path)}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm flex items-center gap-3 transition
-                ${pathname === item.path
-                  ? 'bg-white text-blue-900 font-semibold'
-                  : 'hover:bg-blue-800 text-white'
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm flex items-center gap-3 transition active:scale-[0.98]
+                ${active
+                  ? 'bg-white text-indigo-950 font-semibold shadow-sm'
+                  : 'text-indigo-100 hover:bg-white/10 hover:translate-x-0.5'
                 }`}
             >
               <Icon size={18} />
@@ -78,10 +79,10 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-blue-800">
+      <div className="p-3 border-t border-white/10">
         <button
           onClick={handleLogout}
-          className="w-full text-left px-4 py-3 rounded-lg text-sm text-red-300 hover:bg-blue-800 transition flex items-center gap-3"
+          className="w-full text-left px-4 py-2.5 rounded-xl text-sm text-rose-300 hover:bg-white/10 transition flex items-center gap-3 active:scale-[0.98]"
         >
           <LogOut size={18} /> Logout
         </button>

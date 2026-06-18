@@ -18,8 +18,8 @@ export default function DashboardLayout({ children, title }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-slate-400">Loading...</p>
       </div>
     )
   }
@@ -27,7 +27,7 @@ export default function DashboardLayout({ children, title }) {
   if (!user) return null
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Navbar title={title} />

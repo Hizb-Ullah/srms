@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
@@ -21,11 +21,23 @@ body {
 input,
 textarea,
 select {
-  color: #171717;
+  color: #0f172a;
   background-color: #ffffff;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #9ca3af;
+  color: #94a3b8;
+}
+
+* {
+  transition-property: color, background-color, border-color, transform, box-shadow, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }
