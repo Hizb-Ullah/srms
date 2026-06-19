@@ -25,40 +25,42 @@ export default function AdminAuditPage() {
 
   return (
     <DashboardLayout title="Audit Logs">
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="font-semibold text-gray-800 mb-4">
-          Complete Action History
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        <h3 className="font-semibold text-slate-800 mb-4">
+          Complete action history
         </h3>
         {loading ? (
-          <p className="text-gray-500">Loading...</p>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4 border-b border-slate-50 pb-4 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-slate-200 mt-2 flex-shrink-0"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+                  <div className="h-3 bg-slate-100 rounded w-1/3"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : logs.length === 0 ? (
-          <p className="text-gray-500">No audit logs yet.</p>
+          <p className="text-slate-500">No audit logs yet.</p>
         ) : (
           <div className="space-y-4">
             {logs.map((log, i) => (
-              <div key={i} className="flex gap-4 border-b pb-4">
-                <div className="w-2 h-2 rounded-full bg-blue-900 mt-2 flex-shrink-0"></div>
+              <div key={i} className="flex gap-4 border-b border-slate-50 pb-4">
+                <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 flex-shrink-0"></div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{log.action}</p>
+                  <p className="text-sm font-medium text-slate-800">{log.action}</p>
                   <div className="flex gap-4 mt-1">
-                    <p className="text-xs text-gray-500">
-                      By: {log.performedBy?.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Role: {log.role}
-                    </p>
+                    <p className="text-xs text-slate-500">By: {log.performedBy?.name}</p>
+                    <p className="text-xs text-slate-500">Role: {log.role}</p>
                     {log.fileId && (
-                      <p className="text-xs text-gray-500">
-                        Plot: {log.fileId?.plotNumber}
-                      </p>
+                      <p className="text-xs text-slate-500 font-mono">{log.fileId?.plotNumber}</p>
                     )}
                   </div>
                   {log.remarks && (
-                    <p className="text-xs text-gray-600 mt-1 italic">
-                      {log.remarks}
-                    </p>
+                    <p className="text-xs text-slate-600 mt-1 italic">{log.remarks}</p>
                   )}
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     {new Date(log.timestamp).toLocaleString()}
                   </p>
                 </div>

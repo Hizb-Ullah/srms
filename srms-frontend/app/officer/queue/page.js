@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Badge from '@/components/ui/Badge'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { getQueue } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -34,17 +35,17 @@ export default function OfficerQueuePage() {
 
   return (
     <DashboardLayout title="File Queue">
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
 
         <div className="flex gap-2 mb-6 flex-wrap">
           {['all', 'submitted', 'capturing', 'examination', 'dispatch'].map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition
+              className={`px-4 py-2 rounded-full text-sm font-medium transition active:scale-95
                 ${filter === s
-                  ? 'bg-blue-900 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -54,18 +55,18 @@ export default function OfficerQueuePage() {
         </div>
 
         {loading ? (
-          <p className="text-gray-500">Loading...</p>
+          <TableSkeleton rows={6} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
-            <ClipboardList size={48} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No files in this category.</p>
+            <ClipboardList size={40} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500">No files in this category.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
-                <th className="pb-3">Plot Number</th>
-                <th className="pb-3">Survey Record</th>
+              <tr className="text-left text-slate-500 border-b border-slate-100">
+                <th className="pb-3">Plot number</th>
+                <th className="pb-3">Survey record</th>
                 <th className="pb-3">Surveyor</th>
                 <th className="pb-3">Status</th>
                 <th className="pb-3">Date</th>
@@ -74,18 +75,18 @@ export default function OfficerQueuePage() {
             </thead>
             <tbody>
               {filtered.map((file) => (
-                <tr key={file._id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 font-medium">{file.plotNumber}</td>
-                  <td className="py-3">{file.surveyRecordNumber}</td>
+                <tr key={file._id} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                  <td className="py-3 font-medium font-mono text-xs">{file.plotNumber}</td>
+                  <td className="py-3 font-mono text-xs">{file.surveyRecordNumber}</td>
                   <td className="py-3">{file.surveyorId?.name}</td>
                   <td className="py-3"><Badge status={file.status} /></td>
-                  <td className="py-3 text-gray-500">
+                  <td className="py-3 text-slate-500">
                     {new Date(file.createdAt).toLocaleDateString()}
                   </td>
                   <td className="py-3">
                     <button
                       onClick={() => router.push(`/officer/queue/${file._id}`)}
-                      className="bg-blue-900 text-white px-3 py-1 rounded text-xs hover:bg-blue-800"
+                      className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 active:scale-95 transition"
                     >
                       Process
                     </button>

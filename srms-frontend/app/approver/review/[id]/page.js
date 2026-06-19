@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Badge from '@/components/ui/Badge'
+import WorkflowTimeline from '@/components/workflow/WorkflowTimeline'
 import { getFile, processGate, getFileAudit } from '@/lib/api'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -55,17 +56,20 @@ export default function ApproverReviewPage() {
   }
 
   const approveClass = action === 'pass'
-    ? 'w-full py-3 rounded-lg font-medium border-2 bg-green-600 text-white border-green-600'
-    : 'w-full py-3 rounded-lg font-medium border-2 border-green-600 text-green-600'
+    ? 'w-full py-3 rounded-lg font-medium border-2 bg-emerald-600 text-white border-emerald-600'
+    : 'w-full py-3 rounded-lg font-medium border-2 border-emerald-600 text-emerald-600'
 
   const rejectClass = action === 'fail'
-    ? 'w-full py-3 rounded-lg font-medium border-2 bg-red-600 text-white border-red-600'
-    : 'w-full py-3 rounded-lg font-medium border-2 border-red-600 text-red-600'
+    ? 'w-full py-3 rounded-lg font-medium border-2 bg-rose-600 text-white border-rose-600'
+    : 'w-full py-3 rounded-lg font-medium border-2 border-rose-600 text-rose-600'
 
   if (loading) {
     return (
       <DashboardLayout title="Review File">
-        <p className="text-gray-500">Loading...</p>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 animate-pulse">
+          <div className="h-4 bg-slate-100 rounded w-1/3 mb-4"></div>
+          <div className="h-3 bg-slate-100 rounded w-2/3 mb-2"></div>
+        </div>
       </DashboardLayout>
     )
   }
@@ -73,7 +77,7 @@ export default function ApproverReviewPage() {
   if (!file) {
     return (
       <DashboardLayout title="Review File">
-        <p className="text-red-500">File not found.</p>
+        <p className="text-rose-500">File not found.</p>
       </DashboardLayout>
     )
   }
@@ -84,66 +88,58 @@ export default function ApproverReviewPage() {
 
         <div className="lg:col-span-2 space-y-6">
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">File Information</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">File information</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-gray-500">Plot Number</p>
-                <p className="font-bold text-blue-900">{file.plotNumber}</p>
+                <p className="text-slate-500">Plot number</p>
+                <p className="font-bold text-indigo-700 font-mono text-sm">{file.plotNumber}</p>
               </div>
               <div>
-                <p className="text-gray-500">Survey Record</p>
-                <p className="font-bold text-blue-900">{file.surveyRecordNumber}</p>
+                <p className="text-slate-500">Survey record</p>
+                <p className="font-bold text-indigo-700 font-mono text-sm">{file.surveyRecordNumber}</p>
               </div>
               <div>
-                <p className="text-gray-500">Surveyor</p>
+                <p className="text-slate-500">Surveyor</p>
                 <p className="font-medium">{file.surveyorId?.name}</p>
               </div>
               <div>
-                <p className="text-gray-500">Current Stage</p>
+                <p className="text-slate-500">Current stage</p>
                 <Badge status={file.currentStage} />
               </div>
               <div>
-                <p className="text-gray-500">Status</p>
+                <p className="text-slate-500">Status</p>
                 <Badge status={file.status} />
               </div>
               <div>
-                <p className="text-gray-500">Submitted</p>
+                <p className="text-slate-500">Submitted</p>
                 <p>{new Date(file.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Workflow Stages</h3>
-            <div className="space-y-3">
-              {file.stages.map((stage, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium capitalize">{stage.name}</p>
-                    {stage.remarks && (
-                      <p className="text-xs text-gray-500 mt-1">{stage.remarks}</p>
-                    )}
-                  </div>
-                  <Badge status={stage.status} />
-                </div>
-              ))}
-            </div>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-5">Workflow progress</h3>
+            <WorkflowTimeline
+              stages={file.stages}
+              currentStage={file.currentStage}
+              overallStatus={file.status}
+            />
           </div>
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Audit Trail</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Audit trail</h3>
             {audit.length === 0 ? (
-              <p className="text-gray-500 text-sm">No actions yet.</p>
+              <p className="text-slate-500 text-sm">No actions yet.</p>
             ) : (
               <div className="space-y-3">
                 {audit.map((log, i) => (
-                  <div key={i} className="border-l-2 border-blue-200 pl-3">
-                    <p className="text-xs font-medium text-gray-800">{log.action}</p>
-                    <p className="text-xs text-gray-500">{log.performedBy?.name} - {log.role}</p>
-                    <p className="text-xs text-gray-400">{new Date(log.timestamp).toLocaleString()}</p>
+                  <div key={i} className="border-l-2 border-indigo-200 pl-3">
+                    <p className="text-xs font-medium text-slate-800">{log.action}</p>
+                    <p className="text-xs text-slate-500">{log.performedBy?.name} - {log.role}</p>
+                    <p className="text-xs text-slate-400">{new Date(log.timestamp).toLocaleString()}</p>
                     {log.remarks && (
-                      <p className="text-xs text-gray-600 mt-1">{log.remarks}</p>
+                      <p className="text-xs text-slate-600 mt-1">{log.remarks}</p>
                     )}
                   </div>
                 ))}
@@ -155,9 +151,9 @@ export default function ApproverReviewPage() {
 
         <div className="space-y-6">
 
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Approval Decision</h3>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Approval decision</h3>
+            <p className="text-sm text-slate-500 mb-4">
               Review the file and make your decision.
             </p>
             <div className="space-y-3 mb-4">
@@ -169,7 +165,7 @@ export default function ApproverReviewPage() {
               </button>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-600 mb-1">
                 Remarks
               </label>
               <textarea
@@ -177,15 +173,15 @@ export default function ApproverReviewPage() {
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={3}
                 placeholder="Add remarks..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <button
               onClick={handleProcess}
               disabled={processing || !action}
-              className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition disabled:opacity-50"
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
             >
-              {processing ? 'Submitting...' : 'Submit Decision'}
+              {processing ? 'Submitting...' : 'Submit decision'}
             </button>
           </div>
 
