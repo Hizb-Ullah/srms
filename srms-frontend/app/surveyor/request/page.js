@@ -26,42 +26,42 @@ export default function RequestNumberPage() {
   return (
     <DashboardLayout title="Request Plot Number">
       <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-xl shadow p-8 text-center">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
 
           <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 text-blue-900 p-4 rounded-full">
-              <Hash size={36} />
+            <div className="bg-indigo-50 text-indigo-700 p-4 rounded-full">
+              <Hash size={32} />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Request Plot Number
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+            Request plot number
           </h2>
-          <p className="text-gray-500 mb-8">
+          <p className="text-slate-500 mb-8">
             Click the button below to get a unique plot number and survey record number assigned to you.
           </p>
 
           {result && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6 text-left">
-              <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-                <CheckCircle2 size={18} /> Numbers Issued Successfully
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-6 text-left">
+              <h3 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                <CheckCircle2 size={18} /> Numbers issued successfully
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Plot Number</span>
-                  <span className="font-bold text-blue-900">{result.plotNumber}</span>
+                  <span className="text-slate-600">Plot number</span>
+                  <span className="font-bold text-indigo-700 font-mono text-sm">{result.plotNumber}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Survey Record Number</span>
-                  <span className="font-bold text-blue-900">{result.surveyRecordNumber}</span>
+                  <span className="text-slate-600">Survey record number</span>
+                  <span className="font-bold text-indigo-700 font-mono text-sm">{result.surveyRecordNumber}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Issued At</span>
-                  <span className="text-gray-700">
+                  <span className="text-slate-600">Issued at</span>
+                  <span className="text-slate-700">
                     {new Date(result.issuedAt).toLocaleString()}
                   </span>
                 </div>
               </div>
-              <p className="text-green-700 text-sm mt-3">
+              <p className="text-emerald-700 text-sm mt-3">
                 Please save these numbers. You will need them to submit your file.
               </p>
             </div>
@@ -70,17 +70,17 @@ export default function RequestNumberPage() {
           <button
             onClick={handleRequest}
             disabled={loading || result}
-            className="w-full bg-blue-900 text-white py-4 rounded-xl font-semibold text-lg hover:bg-blue-800 transition disabled:opacity-50"
+            className="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
           >
-            {loading ? 'Requesting...' : result ? 'Number Issued' : 'Request Plot Number'}
+            {loading ? 'Requesting...' : result ? 'Number issued' : 'Request plot number'}
           </button>
 
           {result && (
             <button
               onClick={() => setResult(null)}
-              className="w-full mt-3 border border-gray-300 text-gray-600 py-3 rounded-xl hover:bg-gray-50 transition"
+              className="w-full mt-3 border border-slate-200 text-slate-600 py-3 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition"
             >
-              Request Another Number
+              Request another number
             </button>
           )}
         </div>

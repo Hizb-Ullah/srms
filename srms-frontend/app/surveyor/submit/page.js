@@ -41,15 +41,15 @@ export default function SubmitFilePage() {
   return (
     <DashboardLayout title="Submit File">
       <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-6">
-            Submit File to DSM
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8">
+          <h2 className="text-xl font-bold text-slate-800 mb-6">
+            Submit file to DSM
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Plot Number
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Plot number
               </label>
               <input
                 type="text"
@@ -57,13 +57,13 @@ export default function SubmitFilePage() {
                 onChange={(e) => setPlotNumber(e.target.value)}
                 required
                 placeholder="e.g. PLT-2026-00001"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Survey Record Number
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Survey record number
               </label>
               <input
                 type="text"
@@ -71,33 +71,33 @@ export default function SubmitFilePage() {
                 onChange={(e) => setSurveyRecordNumber(e.target.value)}
                 required
                 placeholder="e.g. SRN-2026-00001"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Upload Documents
+              <label className="block text-sm font-medium text-slate-600 mb-1">
+                Upload documents
               </label>
               <input
                 type="file"
                 multiple
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 onChange={(e) => setDocuments(Array.from(e.target.files))}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               />
-              <p className="text-gray-400 text-xs mt-1">
+              <p className="text-slate-400 text-xs mt-1">
                 Allowed: PDF, DOC, DOCX, JPG, PNG. Max 10MB each.
               </p>
             </div>
 
             {documents.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  Selected Files ({documents.length}):
+              <div className="bg-slate-50 rounded-xl p-3">
+                <p className="text-sm font-medium text-slate-700 mb-2">
+                  Selected files ({documents.length}):
                 </p>
                 {documents.map((doc, i) => (
-                  <p key={i} className="text-xs text-gray-600 flex items-center gap-2">
+                  <p key={i} className="text-xs text-slate-600 flex items-center gap-2">
                     <FileText size={14} /> {doc.name}
                   </p>
                 ))}
@@ -107,9 +107,9 @@ export default function SubmitFilePage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition disabled:opacity-50"
+              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
             >
-              {loading ? 'Submitting...' : 'Submit File to DSM'}
+              {loading ? 'Submitting...' : 'Submit file to DSM'}
             </button>
           </form>
         </div>
