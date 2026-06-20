@@ -2,6 +2,7 @@ const User = require('../models/User.model')
 const File = require('../models/File.model')
 const PlotNumber = require('../models/PlotNumber.model')
 const AuditLog = require('../models/AuditLog.model')
+const bcrypt = require('bcryptjs')
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -91,4 +92,160 @@ const getAuditLogs = async (req, res) => {
   }
 }
 
-module.exports = { getAllUsers, toggleUserLock, getDashboardStats, getAuditLogs }
+// Create a new user (admin only)
+const createUser = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      })
+    }
+
+    const userExists = await User.findOne({ email })
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists'
+      })
+    }
+
+    const salt = await bcrypt.genSalt(12)
+    const hashedPassword = await bcrypt.hash(password, salt)
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role
+    })
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Update a user's details (admin only)
+const updateUser = async (req, res) => {
+  try {
+    const { name, email, role } = req.body
+    const user = await User.findById(req.params.id)
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    // Prevent demoting the only admin
+    if (user.role === 'admin' && role !== 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' })
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot change role of the only admin account'
+        })
+      }
+    }
+
+    if (name) user.name = name
+    if (email) user.email = email
+    if (role) user.role = role
+
+    await user.save()
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Delete a user (admin only)
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete the admin account'
+      })
+    }
+
+    await user.deleteOne()
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully'
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Reset a user's password (admin only)
+const resetUserPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body
+    const user = await User.findById(req.params.id)
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters'
+      })
+    }
+
+    const salt = await bcrypt.genSalt(12)
+    user.password = await bcrypt.hash(newPassword, salt)
+    user.failedLoginAttempts = 0
+    user.isLocked = false
+
+    await user.save()
+
+    res.status(200).json({
+      success: true,
+      message: `Password reset successfully for ${user.name}`
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+module.exports = {
+  getAllUsers,
+  toggleUserLock,
+  getDashboardStats,
+  getAuditLogs,
+  createUser,
+  updateUser,
+  deleteUser,
+  resetUserPassword
+}

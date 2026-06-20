@@ -116,7 +116,7 @@ export default function RegisterPage() {
               <option value="surveyor">Surveyor</option>
               <option value="officer">Officer</option>
               <option value="approver">Approver</option>
-              <option value="admin">Admin</option>
+              
             </select>
           </div>
 

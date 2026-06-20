@@ -26,6 +26,14 @@ const register = async (req, res) => {
 
     const { name, email, password, role } = req.body
 
+    // Block admin accounts from public registration
+    if (role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin accounts cannot be created through registration'
+      })
+    }
+
     // Check if user already exists
     const userExists = await User.findOne({ email })
     if (userExists) {

@@ -6,9 +6,9 @@ const rateLimit = require('express-rate-limit')
 const http = require('http')
 const { Server } = require('socket.io')
 const connectDB = require('./config/db')
+const createDefaultAdmin = require('./utils/createDefaultAdmin')
 
 dotenv.config()
-connectDB()
 
 const app = express()
 const server = http.createServer(app)
@@ -75,6 +75,12 @@ app.use((req, res) => {
 })
 
 const PORT = process.env.PORT || 5000
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+
+connectDB().then((conn) => {
+  if (conn) {
+    createDefaultAdmin()
+  }
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
 })
