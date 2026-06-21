@@ -8,7 +8,9 @@ const {
   createUser,
   updateUser,
   deleteUser,
-  resetUserPassword
+  resetUserPassword,
+  getResetRequests,
+  resolveResetRequest
 } = require('../controllers/admin.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
 
@@ -23,5 +25,7 @@ router.patch('/users/:id/lock',       toggleUserLock)
 router.patch('/users/:id/reset-password', resetUserPassword)
 router.get('/dashboard',              getDashboardStats)
 router.get('/audit-logs',             getAuditLogs)
+router.get('/reset-requests',                getResetRequests)
+router.patch('/reset-requests/:id/resolve',  resolveResetRequest)
 
 module.exports = router

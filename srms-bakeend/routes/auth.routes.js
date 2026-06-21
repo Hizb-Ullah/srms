@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { body } = require('express-validator')
-const { register, login, getMe } = require('../controllers/auth.controller')
+const { register, login, getMe, requestPasswordReset } = require('../controllers/auth.controller')
 const { protect } = require('../middleware/auth.middleware')
 
 // Validation rules for register
@@ -31,5 +31,6 @@ const loginValidation = [
 router.post('/register', registerValidation, register)
 router.post('/login', loginValidation, login)
 router.get('/me', protect, getMe)
+router.post('/forgot-password', requestPasswordReset)
 
 module.exports = router

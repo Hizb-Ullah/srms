@@ -2,6 +2,7 @@ const User = require('../models/User.model')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { validationResult } = require('express-validator')
+const ResetRequest = require('../models/ResetRequest.model')
 
 // Generate JWT Token
 const generateToken = (id, role) => {
@@ -163,5 +164,45 @@ const getMe = async (req, res) => {
     })
   }
 }
+// Submit a forgot-password request (admin-assisted, no email)
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body
 
-module.exports = { register, login, getMe }
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      // Don't reveal whether the email exists
+      return res.status(200).json({
+        success: true,
+        message: 'If this email exists in our system, a request has been submitted to the admin.'
+      })
+    }
+
+    // Avoid duplicate pending requests
+    const existing = await ResetRequest.findOne({ email, status: 'pending' })
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: 'A reset request is already pending for this account.'
+      })
+    }
+
+    await ResetRequest.create({ email, userId: user._id })
+
+    res.status(200).json({
+      success: true,
+      message: 'Your request has been submitted. An administrator will reset your password shortly.'
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+module.exports = { register, login, getMe, requestPasswordReset }

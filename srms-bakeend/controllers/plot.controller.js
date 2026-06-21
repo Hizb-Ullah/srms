@@ -45,17 +45,29 @@ const requestPlotNumber = async (req, res) => {
   }
 }
 
+
 // Get all plot numbers for logged in surveyor
 const getMyPlotNumbers = async (req, res) => {
   try {
+    const File = require('../models/File.model')
+
     const plots = await PlotNumber.find({ 
       surveyorId: req.user.id 
     }).sort({ createdAt: -1 })
 
+    const submittedPlotNumbers = await File.find({
+      surveyorId: req.user.id
+    }).distinct('plotNumber')
+
+    const plotsWithStatus = plots.map((plot) => ({
+      ...plot.toObject(),
+      fileSubmitted: submittedPlotNumbers.includes(plot.plotNumber)
+    }))
+
     res.status(200).json({
       success: true,
-      count: plots.length,
-      data: plots
+      count: plotsWithStatus.length,
+      data: plotsWithStatus
     })
   } catch (error) {
     res.status(500).json({ 

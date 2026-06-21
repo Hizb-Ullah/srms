@@ -3,6 +3,7 @@ const File = require('../models/File.model')
 const PlotNumber = require('../models/PlotNumber.model')
 const AuditLog = require('../models/AuditLog.model')
 const bcrypt = require('bcryptjs')
+const ResetRequest = require('../models/ResetRequest.model')
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -238,6 +239,37 @@ const resetUserPassword = async (req, res) => {
     res.status(500).json({ success: false, message: error.message })
   }
 }
+// Get all pending password reset requests
+const getResetRequests = async (req, res) => {
+  try {
+    const requests = await ResetRequest.find({ status: 'pending' })
+      .populate('userId', 'name email role')
+      .sort({ createdAt: -1 })
+
+    res.status(200).json({ success: true, count: requests.length, data: requests })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Mark a reset request as resolved (call after using resetUserPassword)
+const resolveResetRequest = async (req, res) => {
+  try {
+    const request = await ResetRequest.findById(req.params.id)
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' })
+    }
+
+    request.status = 'resolved'
+    request.resolvedBy = req.user.id
+    request.resolvedAt = new Date()
+    await request.save()
+
+    res.status(200).json({ success: true, message: 'Request marked as resolved' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
 
 module.exports = {
   getAllUsers,
@@ -247,5 +279,7 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
-  resetUserPassword
+  resetUserPassword,
+  getResetRequests,
+  resolveResetRequest
 }
