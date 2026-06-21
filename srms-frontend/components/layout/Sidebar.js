@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
-  CheckCircle, Users, FileBarChart, LogOut
+  CheckCircle, Users, FileBarChart, LogOut, KeyRound
 } from 'lucide-react'
 
 const menuItems = {
@@ -23,11 +23,12 @@ const menuItems = {
     { label: 'Dashboard',       path: '/approver',         icon: Home },
     { label: 'Pending Approval',path: '/approver/queue',   icon: CheckCircle },
   ],
-  admin: [
-    { label: 'Dashboard',       path: '/admin',            icon: Home },
-    { label: 'Users',           path: '/admin/users',      icon: Users },
-    { label: 'All Files',       path: '/admin/files',      icon: FolderOpen },
-    { label: 'Audit Logs',      path: '/admin/audit',      icon: FileBarChart },
+ admin: [
+    { label: 'Dashboard',       path: '/admin',                icon: Home },
+    { label: 'Users',           path: '/admin/users',          icon: Users },
+    { label: 'Reset Requests',  path: '/admin/reset-requests', icon: KeyRound },
+    { label: 'All Files',       path: '/admin/files',          icon: FolderOpen },
+    { label: 'Audit Logs',      path: '/admin/audit',          icon: FileBarChart },
   ]
 }
 

@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { loginUser } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading]   = useState(false)
   const { login } = useAuth()
   const router = useRouter()
@@ -76,17 +77,31 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-600">
+                Password
+              </label>
+              <a href="/forgot-password" className="text-xs text-indigo-600 hover:underline font-medium">
+                Forgot password?
+              </a>
+            </div>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="Enter your password"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-11 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button

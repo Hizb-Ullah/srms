@@ -18,9 +18,11 @@ API.interceptors.request.use((config) => {
 })
 
 // Auth
-export const loginUser     = (data) => API.post('/auth/login', data)
-export const registerUser  = (data) => API.post('/auth/register', data)
-export const getMe         = ()     => API.get('/auth/me')
+// Auth
+export const loginUser           = (data) => API.post('/auth/login', data)
+export const registerUser        = (data) => API.post('/auth/register', data)
+export const getMe               = ()     => API.get('/auth/me')
+export const requestPasswordReset = (data) => API.post('/auth/forgot-password', data)
 
 // Plots
 export const requestPlot   = ()     => API.post('/plots/request')
@@ -39,10 +41,17 @@ export const processGate   = (fileId, data) => API.patch(`/workflow/${fileId}/ga
 export const resubmitFile  = (fileId, data) => API.patch(`/workflow/${fileId}/resubmit`, data)
 export const getQueue      = ()             => API.get('/workflow/queue')
 
+
 // Admin
-export const getAllUsers    = ()     => API.get('/admin/users')
-export const toggleUserLock= (id)   => API.patch(`/admin/users/${id}/lock`)
-export const getDashboard  = ()     => API.get('/admin/dashboard')
-export const getAuditLogs  = ()     => API.get('/admin/audit-logs')
+export const getAllUsers       = ()           => API.get('/admin/users')
+export const createUser        = (data)       => API.post('/admin/users', data)
+export const updateUser        = (id, data)   => API.put(`/admin/users/${id}`, data)
+export const deleteUser        = (id)         => API.delete(`/admin/users/${id}`)
+export const toggleUserLock    = (id)         => API.patch(`/admin/users/${id}/lock`)
+export const resetUserPassword  = (id, data) => API.patch(`/admin/users/${id}/reset-password`, data)
+export const getDashboard       = ()         => API.get('/admin/dashboard')
+export const getAuditLogs       = ()         => API.get('/admin/audit-logs')
+export const getResetRequests   = ()         => API.get('/admin/reset-requests')
+export const resolveResetRequest = (id)      => API.patch(`/admin/reset-requests/${id}/resolve`)
 
 export default API
