@@ -12,6 +12,15 @@ const requestPlotNumber = async (req, res) => {
     const plotNumber = await generatePlotNumber()
     const surveyRecordNumber = await generateSurveyRecordNumber()
 
+    // Double-check uniqueness (race condition protection)
+    const existing = await PlotNumber.findOne({ plotNumber })
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'Plot number conflict — please try again'
+      })
+    }
+
     // Save to database
     const plot = await PlotNumber.create({
       plotNumber,
@@ -121,10 +130,53 @@ const getAllPlotNumbers = async (req, res) => {
     })
   }
 }
+// Search by plot number — role aware
+const searchByPlotNumber = async (req, res) => {
+  try {
+    const { plotNumber } = req.params
+    const File = require('../models/File.model')
+    const AuditLog = require('../models/AuditLog.model')
 
+    const query = { plotNumber: { $regex: plotNumber, $options: 'i' } }
+
+    // Surveyor can only see their own
+    if (req.user.role === 'surveyor') {
+      query.surveyorId = req.user.id
+    }
+
+    const plot = await PlotNumber.findOne(query)
+      .populate('surveyorId', 'name email')
+
+    if (!plot) {
+      return res.status(404).json({
+        success: false,
+        message: 'Plot number not found'
+      })
+    }
+
+    const file = await File.findOne({ plotNumber: plot.plotNumber })
+      .populate('surveyorId', 'name email')
+
+    const logs = file ? await AuditLog.find({ fileId: file._id })
+      .populate('performedBy', 'name role')
+      .sort({ timestamp: -1 }) : []
+
+    res.status(200).json({
+      success: true,
+      data: {
+        plot,
+        file: file || null,
+        auditLogs: logs
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
 module.exports = { 
   requestPlotNumber, 
   getMyPlotNumbers, 
   getPlotNumber,
-  getAllPlotNumbers
+  getAllPlotNumbers,
+  searchByPlotNumber
 }

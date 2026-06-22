@@ -58,7 +58,23 @@ const processGate = async (req, res) => {
       })
     }
 
-    const currentStage = file.currentStage
+    let currentStage = file.currentStage
+
+    // Auto-advance from submitted to capturing when officer opens it
+    if (currentStage === 'submitted' && req.user.role === 'officer') {
+      file.currentStage = 'capturing'
+      file.status = 'capturing'
+      currentStage = 'capturing'
+
+      await logAction({
+        fileId: file._id,
+        action: 'File received by DSM — moved to capturing stage',
+        performedBy: req.user.id,
+        role: req.user.role,
+        remarks: 'Auto-advanced from submitted to capturing'
+      })
+    }
+
     const allowedRoles = STAGE_ROLES[currentStage]
 
     if (!allowedRoles) {

@@ -4,7 +4,8 @@ const {
   requestPlotNumber, 
   getMyPlotNumbers,
   getPlotNumber,
-  getAllPlotNumbers
+  getAllPlotNumbers,
+  searchByPlotNumber
 } = require('../controllers/plot.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
 
@@ -20,5 +21,6 @@ router.get('/:id', getPlotNumber)
 
 // Admin and officer only
 router.get('/', authorize('admin', 'officer'), getAllPlotNumbers)
+router.get('/search/:plotNumber', searchByPlotNumber)
 
 module.exports = router

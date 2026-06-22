@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
-  CheckCircle, Users, FileBarChart, LogOut, KeyRound
+  CheckCircle, Users, FileBarChart, LogOut, KeyRound, Search
 } from 'lucide-react'
 
 const menuItems = {
@@ -14,24 +14,27 @@ const menuItems = {
     { label: 'Request Number',  path: '/surveyor/request', icon: Hash },
     { label: 'Submit File',     path: '/surveyor/submit',  icon: FolderOpen },
     { label: 'My Files',        path: '/surveyor/files',   icon: ClipboardList },
+    { label: 'Search',          path: '/search',           icon: Search },
   ],
   officer: [
     { label: 'Dashboard',       path: '/officer',          icon: Home },
     { label: 'File Queue',      path: '/officer/queue',    icon: ClipboardList },
+    { label: 'Search',          path: '/search',           icon: Search },
   ],
   approver: [
     { label: 'Dashboard',       path: '/approver',         icon: Home },
     { label: 'Pending Approval',path: '/approver/queue',   icon: CheckCircle },
+    { label: 'Search',          path: '/search',           icon: Search },
   ],
- admin: [
+  admin: [
     { label: 'Dashboard',       path: '/admin',                icon: Home },
     { label: 'Users',           path: '/admin/users',          icon: Users },
     { label: 'Reset Requests',  path: '/admin/reset-requests', icon: KeyRound },
     { label: 'All Files',       path: '/admin/files',          icon: FolderOpen },
     { label: 'Audit Logs',      path: '/admin/audit',          icon: FileBarChart },
+    { label: 'Search',          path: '/search',               icon: Search },
   ]
 }
-
 export default function Sidebar() {
   const { user, logout } = useAuth()
   const router = useRouter()

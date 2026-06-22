@@ -120,6 +120,20 @@ export default function LoginPage() {
           </a>
         </p>
 
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <p className="text-center text-slate-400 text-xs mb-2">Quick access</p>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@dsm.gov.pk')
+              setPassword('Admin@123')
+            }}
+            className="w-full border border-slate-200 text-slate-500 py-2 rounded-lg text-xs hover:bg-slate-50 transition"
+          >
+            Fill admin credentials
+          </button>
+        </div>
+
         <p className="text-center text-slate-300 text-xs mt-3">
           Secure Access Only
         </p>

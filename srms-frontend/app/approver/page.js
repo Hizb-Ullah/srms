@@ -41,7 +41,14 @@ export default function ApproverDashboard() {
         {loading ? (
           <TableSkeleton rows={4} />
         ) : queue.length === 0 ? (
-          <p className="text-slate-500">No files pending approval.</p>
+          <div className="text-center py-12">
+            <div className="bg-amber-50 rounded-xl p-6 max-w-sm mx-auto">
+              <p className="text-amber-700 font-medium mb-1">No pending approvals</p>
+              <p className="text-amber-600 text-sm">
+                Files will appear here once they have passed the examination stage and are ready for your approval.
+              </p>
+            </div>
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead>

@@ -28,6 +28,7 @@ export const requestPasswordReset = (data) => API.post('/auth/forgot-password', 
 export const requestPlot   = ()     => API.post('/plots/request')
 export const getMyPlots    = ()     => API.get('/plots/my')
 export const getAllPlots    = ()     => API.get('/plots')
+export const searchPlotNumber = (plotNumber) => API.get(`/plots/search/${plotNumber}`)
 
 // Files
 export const submitFile    = (data) => API.post('/files/submit', data)
