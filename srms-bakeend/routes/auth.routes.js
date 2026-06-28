@@ -1,10 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const { body } = require('express-validator')
-const { register, login, getMe, requestPasswordReset } = require('../controllers/auth.controller')
+const { register, login, getMe, requestPasswordReset, resetAdmin } = require('../controllers/auth.controller')
 const { protect } = require('../middleware/auth.middleware')
 
-// Validation rules for register
 const registerValidation = [
   body('name')
     .notEmpty().withMessage('Name is required')
@@ -20,7 +19,6 @@ const registerValidation = [
     .withMessage('Invalid role')
 ]
 
-// Validation rules for login
 const loginValidation = [
   body('email')
     .isEmail().withMessage('Please enter a valid email'),
@@ -32,5 +30,17 @@ router.post('/register', registerValidation, register)
 router.post('/login', loginValidation, login)
 router.get('/me', protect, getMe)
 router.post('/forgot-password', requestPasswordReset)
+router.post('/reset-admin', resetAdmin)
+
+// Check if admin exists (for credentials page)
+router.get('/admin-exists', async (req, res) => {
+  try {
+    const User = require('../models/User.model')
+    const admin = await User.findOne({ role: 'admin' })
+    res.status(200).json({ exists: !!admin })
+  } catch (error) {
+    res.status(500).json({ exists: false })
+  }
+})
 
 module.exports = router

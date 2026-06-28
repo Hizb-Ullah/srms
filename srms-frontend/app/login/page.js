@@ -8,10 +8,10 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
-  const [email, setEmail]       = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading]   = useState(false)
+  const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
 
@@ -24,11 +24,10 @@ export default function LoginPage() {
       toast.success('Login successful')
 
       const role = res.data.user.role
-      if (role === 'surveyor')  router.push('/surveyor')
-      if (role === 'officer')   router.push('/officer')
-      if (role === 'approver')  router.push('/approver')
-      if (role === 'admin')     router.push('/admin')
-
+      if (role === 'surveyor') router.push('/surveyor')
+      if (role === 'officer') router.push('/officer')
+      if (role === 'approver') router.push('/approver')
+      if (role === 'admin') router.push('/admin')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {
@@ -47,8 +46,7 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100 border border-slate-100 w-full max-w-md p-8 hover:shadow-2xl hover:shadow-indigo-100 transition">
-
+      <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100 border border-slate-100 w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl p-4 mb-4 inline-block shadow-lg shadow-indigo-200">
             <h1 className="text-xl font-bold">SRMS</h1>
@@ -56,9 +54,7 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-800">
             Survey Record Management System
           </h2>
-          <p className="text-slate-400 mt-1">
-            Sign in to your account
-          </p>
+          <p className="text-slate-400 mt-1">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -81,10 +77,14 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-slate-600">
                 Password
               </label>
-              <a href="/forgot-password" className="text-xs text-indigo-600 hover:underline font-medium">
+              <a
+                href="/forgot-password"
+                className="text-xs text-indigo-600 hover:underline font-medium"
+              >
                 Forgot password?
               </a>
             </div>
+
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -115,13 +115,17 @@ export default function LoginPage() {
 
         <p className="text-center text-slate-500 text-sm mt-6">
           Don&apos;t have an account?{' '}
-          <a href="/register" className="text-indigo-600 font-medium hover:underline">
+          <a
+            href="/register"
+            className="text-indigo-600 font-medium hover:underline"
+          >
             Create Account
           </a>
         </p>
 
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <p className="text-center text-slate-400 text-xs mb-2">Quick access</p>
+        <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+          <p className="text-center text-slate-400 text-xs">Quick access</p>
+
           <button
             type="button"
             onClick={() => {
@@ -132,6 +136,13 @@ export default function LoginPage() {
           >
             Fill admin credentials
           </button>
+
+          <a
+            href="/admin-credentials"
+            className="block text-center text-xs text-indigo-500 hover:underline"
+          >
+            Admin setup / forgot admin credentials
+          </a>
         </div>
 
         <p className="text-center text-slate-300 text-xs mt-3">

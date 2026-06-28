@@ -4,35 +4,41 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Badge from '@/components/ui/Badge'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline'
-import { getFile, getFileAudit, resubmitFile } from '@/lib/api'
+import DocumentViewer from '@/components/ui/DocumentViewer'
+import { getFile, getFileAudit, resubmitFile, appealFile, updateFile } from '@/lib/api'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, FileText, Upload, RotateCcw } from 'lucide-react'
 
 export default function FileDetailPage() {
   const [file, setFile] = useState(null)
   const [audit, setAudit] = useState([])
   const [loading, setLoading] = useState(true)
   const [remarks, setRemarks] = useState('')
+  const [appealRemarks, setAppealRemarks] = useState('')
   const [resubmitting, setResubmitting] = useState(false)
+  const [appealing, setAppealing] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [newDocs, setNewDocs] = useState([])
   const router = useRouter()
   const { id } = useParams()
 
   useEffect(() => {
-    const fetchFile = async () => {
-      try {
-        const fileRes = await getFile(id)
-        const auditRes = await getFileAudit(id)
-        setFile(fileRes.data.data)
-        setAudit(auditRes.data.data)
-      } catch (error) {
-        toast.error('Failed to load file')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchFile()
   }, [id])
+
+  const fetchFile = async () => {
+    try {
+      const fileRes = await getFile(id)
+      const auditRes = await getFileAudit(id)
+      setFile(fileRes.data.data)
+      setAudit(auditRes.data.data)
+    } catch (error) {
+      toast.error('Failed to load file')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleResubmit = async () => {
     setResubmitting(true)
@@ -44,6 +50,39 @@ export default function FileDetailPage() {
       toast.error(error.response?.data?.message || 'Failed to resubmit file')
     } finally {
       setResubmitting(false)
+    }
+  }
+
+  const handleAppeal = async () => {
+    setAppealing(true)
+    try {
+      await appealFile(id, { remarks: appealRemarks })
+      toast.success('Appeal submitted successfully')
+      fetchFile()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to submit appeal')
+    } finally {
+      setAppealing(false)
+    }
+  }
+
+  const handleUpdate = async () => {
+    if (newDocs.length === 0) {
+      toast.error('Please select documents to upload')
+      return
+    }
+    setUpdating(true)
+    try {
+      const formData = new FormData()
+      newDocs.forEach(doc => formData.append('documents', doc))
+      await updateFile(id, formData)
+      toast.success('Documents added successfully')
+      setNewDocs([])
+      fetchFile()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update file')
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -67,6 +106,10 @@ export default function FileDetailPage() {
     )
   }
 
+  const isEditable = ['submitted', 'rework'].includes(file.status)
+  const isRejected = file.status === 'rejected'
+  const canAppeal = isRejected && file.appealCount < 1
+
   return (
     <DashboardLayout title="File Details">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -78,11 +121,11 @@ export default function FileDetailPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-slate-500">Plot number</p>
-                <p className="font-bold text-indigo-700 font-mono text-sm">{file.plotNumber}</p>
+                <p className="font-bold text-indigo-700 font-mono">{file.plotNumber}</p>
               </div>
               <div>
                 <p className="text-slate-500">Survey record</p>
-                <p className="font-bold text-indigo-700 font-mono text-sm">{file.surveyRecordNumber}</p>
+                <p className="font-bold text-indigo-700 font-mono">{file.surveyRecordNumber}</p>
               </div>
               <div>
                 <p className="text-slate-500">Status</p>
@@ -96,7 +139,47 @@ export default function FileDetailPage() {
                 <p className="text-slate-500">Submitted</p>
                 <p>{new Date(file.createdAt).toLocaleDateString()}</p>
               </div>
+              {file.rejectionRemarks && (
+                <div className="col-span-2">
+                  <p className="text-slate-500">Rejection reason</p>
+                  <p className="text-rose-600 text-sm mt-1">{file.rejectionRemarks}</p>
+                </div>
+              )}
             </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Documents</h3>
+            <DocumentViewer documents={file.documents} />
+
+            {isEditable && (
+              <div className="border-t border-slate-100 pt-4 mt-4">
+                <p className="text-sm font-medium text-slate-600 mb-2">Add more documents</p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => setNewDocs(Array.from(e.target.files))}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2"
+                />
+                {newDocs.length > 0 && (
+                  <div className="mb-2">
+                    {newDocs.map((doc, i) => (
+                      <p key={i} className="text-xs text-slate-600 flex items-center gap-1">
+                        <FileText size={12} /> {doc.name}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={handleUpdate}
+                  disabled={updating || newDocs.length === 0}
+                  className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50"
+                >
+                  <Upload size={14} /> {updating ? 'Uploading...' : 'Upload documents'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
@@ -119,9 +202,7 @@ export default function FileDetailPage() {
                     <p className="text-xs font-medium text-slate-800">{log.action}</p>
                     <p className="text-xs text-slate-500">{log.performedBy?.name} - {log.role}</p>
                     <p className="text-xs text-slate-400">{new Date(log.timestamp).toLocaleString()}</p>
-                    {log.remarks && (
-                      <p className="text-xs text-slate-600 mt-1">{log.remarks}</p>
-                    )}
+                    {log.remarks && <p className="text-xs text-slate-600 mt-1 italic">{log.remarks}</p>}
                   </div>
                 ))}
               </div>
@@ -131,36 +212,26 @@ export default function FileDetailPage() {
         </div>
 
         <div className="space-y-6">
-
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
             <h3 className="font-semibold text-slate-800 mb-2">File status</h3>
             <Badge status={file.status} />
 
             {file.status === 'rework' && (
               <div className="mt-4">
-                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-                  <AlertTriangle size={18} className="text-rose-600 flex-shrink-0 mt-0.5" />
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-start gap-2">
+                  <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-rose-700 text-sm font-medium">
-                      This file requires corrections.
-                    </p>
-                    <p className="text-rose-600 text-xs mt-1">
-                      Please review the remarks and resubmit.
-                    </p>
+                    <p className="text-amber-700 text-sm font-medium">This file requires corrections.</p>
+                    <p className="text-amber-600 text-xs mt-1">Review the remarks, make corrections, then resubmit.</p>
                   </div>
                 </div>
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-slate-600 mb-1">
-                    Remarks
-                  </label>
-                  <textarea
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    rows={3}
-                    placeholder="Describe corrections made..."
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  rows={3}
+                  placeholder="Describe corrections made..."
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+                />
                 <button
                   onClick={handleResubmit}
                   disabled={resubmitting}
@@ -170,8 +241,45 @@ export default function FileDetailPage() {
                 </button>
               </div>
             )}
-          </div>
 
+            {isRejected && (
+              <div className="mt-4">
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 mb-4">
+                  <p className="text-rose-700 text-sm font-medium">File has been rejected.</p>
+                  {file.rejectionRemarks && (
+                    <p className="text-rose-600 text-xs mt-1">Reason: {file.rejectionRemarks}</p>
+                  )}
+                  {file.appealCount >= 1 && (
+                    <p className="text-rose-500 text-xs mt-2 font-medium">Appeal already used — no further action available.</p>
+                  )}
+                </div>
+
+                {canAppeal && (
+                  <>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-blue-700 text-xs font-medium">You can appeal this rejection once.</p>
+                      <p className="text-blue-600 text-xs mt-1">File will be returned to processing if appeal is submitted.</p>
+                    </div>
+                    <textarea
+                      value={appealRemarks}
+                      onChange={(e) => setAppealRemarks(e.target.value)}
+                      rows={3}
+                      placeholder="Reason for appeal..."
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                    />
+                    <button
+                      onClick={handleAppeal}
+                      disabled={appealing || !appealRemarks}
+                      className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw size={16} />
+                      {appealing ? 'Submitting...' : 'Submit appeal'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

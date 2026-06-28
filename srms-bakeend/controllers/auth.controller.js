@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken')
 const { validationResult } = require('express-validator')
 const ResetRequest = require('../models/ResetRequest.model')
 
-// Generate JWT Token
 const generateToken = (id, role) => {
   return jwt.sign(
     { id, role },
@@ -13,179 +12,99 @@ const generateToken = (id, role) => {
   )
 }
 
-// Register
 const register = async (req, res) => {
   try {
-    // Check validation errors
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
-        errors: errors.array() 
-      })
+      return res.status(400).json({ success: false, errors: errors.array() })
     }
-
     const { name, email, password, role } = req.body
-
-    // Block admin accounts from public registration
     if (role === 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Admin accounts cannot be created through registration'
       })
     }
-
-    // Check if user already exists
     const userExists = await User.findOne({ email })
     if (userExists) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'User already exists' 
-      })
+      return res.status(400).json({ success: false, message: 'User already exists' })
     }
-
-    // Hash password with salt round 12 (government standard)
     const salt = await bcrypt.genSalt(12)
     const hashedPassword = await bcrypt.hash(password, salt)
-
-    // Create user
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role
-    })
-
-    // Generate token
+    const user = await User.create({ name, email, password: hashedPassword, role })
     const token = generateToken(user._id, user.role)
-
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     })
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 }
 
-// Login
 const login = async (req, res) => {
   try {
-    // Check validation errors
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false,
-        errors: errors.array() 
-      })
+      return res.status(400).json({ success: false, errors: errors.array() })
     }
-
     const { email, password } = req.body
-
-    // Check if user exists
     const user = await User.findOne({ email })
     if (!user) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid credentials' 
-      })
+      return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
-
-    // Check if account is locked
     if (user.isLocked) {
       return res.status(403).json({
         success: false,
         message: 'Account locked due to too many failed attempts. Contact admin.'
       })
     }
-
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
-      // Increment failed attempts
       user.failedLoginAttempts += 1
-
-      // Lock account after 5 failed attempts
       if (user.failedLoginAttempts >= 5) {
         user.isLocked = true
       }
       await user.save()
-
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid credentials' 
-      })
+      return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
-
-    // Reset failed attempts on success
     user.failedLoginAttempts = 0
     user.lastLogin = new Date()
     await user.save()
-
-    // Generate token
     const token = generateToken(user._id, user.role)
-
     res.status(200).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     })
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 }
 
-// Get current logged in user
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password')
     res.status(200).json({ success: true, user })
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 }
-// Submit a forgot-password request (admin-assisted, no email)
+
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body
-
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      })
+      return res.status(400).json({ success: false, message: 'Email is required' })
     }
-
     const user = await User.findOne({ email })
     if (!user) {
-      // Don't reveal whether the email exists
       return res.status(200).json({
         success: true,
         message: 'If this email exists in our system, a request has been submitted to the admin.'
       })
     }
-
-    // Avoid duplicate pending requests
     const existing = await ResetRequest.findOne({ email, status: 'pending' })
     if (existing) {
       return res.status(200).json({
@@ -193,9 +112,7 @@ const requestPasswordReset = async (req, res) => {
         message: 'A reset request is already pending for this account.'
       })
     }
-
     await ResetRequest.create({ email, userId: user._id })
-
     res.status(200).json({
       success: true,
       message: 'Your request has been submitted. An administrator will reset your password shortly.'
@@ -205,4 +122,25 @@ const requestPasswordReset = async (req, res) => {
   }
 }
 
-module.exports = { register, login, getMe, requestPasswordReset }
+const resetAdmin = async (req, res) => {
+  try {
+    const { secretKey } = req.body
+    if (secretKey !== 'SRMS_RESET_2026') {
+      return res.status(403).json({ success: false, message: 'Invalid secret key' })
+    }
+    const salt = await bcrypt.genSalt(12)
+    const hashedPassword = await bcrypt.hash('Admin@123', salt)
+    const result = await User.findOneAndUpdate(
+      { role: 'admin' },
+      { $set: { password: hashedPassword, isLocked: false, failedLoginAttempts: 0 } }
+    )
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'No admin account found' })
+    }
+    res.status(200).json({ success: true, message: 'Admin reset to default successfully' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+module.exports = { register, login, getMe, requestPasswordReset, resetAdmin }

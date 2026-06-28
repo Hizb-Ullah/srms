@@ -5,27 +5,29 @@ const {
   getMyFiles,
   getFile,
   getAllFiles,
-  getFileAudit
+  getFileAudit,
+  updateFile
 } = require('../controllers/file.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
 const upload = require('../middleware/upload.middleware')
 
-// All routes require login
 router.use(protect)
 
-// Surveyor routes
-router.post('/submit', 
-  authorize('surveyor'), 
-  upload.array('documents', 10), 
+router.post('/submit',
+  authorize('surveyor'),
+  upload.array('documents', 10),
   submitFile
 )
 router.get('/my', authorize('surveyor'), getMyFiles)
+router.patch('/:id',
+  authorize('surveyor'),
+  upload.array('documents', 10),
+  updateFile
+)
 
-// Shared routes
 router.get('/:id', getFile)
 router.get('/:id/audit', getFileAudit)
 
-// Officer, approver, admin only
 router.get('/', authorize('officer', 'approver', 'admin'), getAllFiles)
 
 module.exports = router

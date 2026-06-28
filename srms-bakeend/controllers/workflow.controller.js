@@ -3,7 +3,6 @@ const logAction = require('../utils/auditLogger')
 const { sendStatusEmail } = require('../utils/emailService')
 const User = require('../models/User.model')
 
-// Stage order
 const STAGE_ORDER = [
   'submitted',
   'capturing',
@@ -13,7 +12,6 @@ const STAGE_ORDER = [
   'archived'
 ]
 
-// Get next stage
 const getNextStage = (currentStage) => {
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
   if (currentIndex === -1 || currentIndex === STAGE_ORDER.length - 1) {
@@ -22,7 +20,6 @@ const getNextStage = (currentStage) => {
   return STAGE_ORDER[currentIndex + 1]
 }
 
-// Who can process which stage
 const STAGE_ROLES = {
   capturing:   ['officer'],
   examination: ['officer'],
@@ -55,6 +52,13 @@ const processGate = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'File is already archived'
+      })
+    }
+
+    if (file.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'File has been rejected'
       })
     }
 
@@ -121,7 +125,6 @@ const processGate = async (req, res) => {
 
       await file.save()
 
-      // Send email notification
       const surveyor = await User.findById(file.surveyorId)
       if (surveyor) {
         await sendStatusEmail({
@@ -133,7 +136,6 @@ const processGate = async (req, res) => {
         })
       }
 
-      // Real time notification
       global.io.to(file.surveyorId.toString()).emit('fileStatusUpdate', {
         plotNumber: file.plotNumber,
         status: nextStage,
@@ -167,7 +169,6 @@ const processGate = async (req, res) => {
 
       await file.save()
 
-      // Send email notification
       const surveyor = await User.findById(file.surveyorId)
       if (surveyor) {
         await sendStatusEmail({
@@ -179,7 +180,6 @@ const processGate = async (req, res) => {
         })
       }
 
-      // Real time notification
       global.io.to(file.surveyorId.toString()).emit('fileStatusUpdate', {
         plotNumber: file.plotNumber,
         status: 'rework',
@@ -207,6 +207,210 @@ const processGate = async (req, res) => {
   }
 }
 
+// Reject a file — officer or approver
+const rejectFile = async (req, res) => {
+  try {
+    const { fileId } = req.params
+    const { remarks } = req.body
+
+    if (!remarks) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejection remarks are required'
+      })
+    }
+
+    const file = await File.findById(fileId)
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' })
+    }
+
+    if (['archived', 'rejected'].includes(file.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `File is already ${file.status}`
+      })
+    }
+
+    if (!['officer', 'approver', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to reject files'
+      })
+    }
+
+    file.status = 'rejected'
+    file.currentStage = 'rejected'
+    file.rejectedBy = req.user.id
+    file.rejectionRemarks = remarks
+
+    await logAction({
+      fileId: file._id,
+      action: `File rejected by ${req.user.role}`,
+      performedBy: req.user.id,
+      role: req.user.role,
+      remarks
+    })
+
+    await file.save()
+
+    const surveyor = await User.findById(file.surveyorId)
+    if (surveyor) {
+      await sendStatusEmail({
+        to: surveyor.email,
+        name: surveyor.name,
+        plotNumber: file.plotNumber,
+        status: 'rejected',
+        remarks
+      })
+    }
+
+    global.io.to(file.surveyorId.toString()).emit('fileStatusUpdate', {
+      plotNumber: file.plotNumber,
+      status: 'rejected',
+      message: `Your file ${file.plotNumber} has been rejected. Reason: ${remarks}`
+    })
+
+    res.status(200).json({
+      success: true,
+      message: 'File rejected successfully',
+      data: {
+        fileId: file._id,
+        plotNumber: file.plotNumber,
+        status: 'rejected',
+        remarks
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Surveyor appeals a rejected file (once only)
+const appealFile = async (req, res) => {
+  try {
+    const { fileId } = req.params
+    const { remarks } = req.body
+
+    const file = await File.findById(fileId)
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' })
+    }
+
+    if (file.surveyorId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to appeal this file'
+      })
+    }
+
+    if (file.status !== 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only rejected files can be appealed'
+      })
+    }
+
+    if (file.appealCount >= 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already used your one appeal for this file'
+      })
+    }
+
+    file.status = 'capturing'
+    file.currentStage = 'capturing'
+    file.appealCount = 1
+
+    // Reset stages
+    file.stages = file.stages.map(s => ({
+      ...s.toObject(),
+      status: 'pending',
+      remarks: '',
+      processedBy: null,
+      timestamp: null
+    }))
+
+    await logAction({
+      fileId: file._id,
+      action: 'Surveyor appealed rejected file — returned to capturing',
+      performedBy: req.user.id,
+      role: req.user.role,
+      remarks: remarks || 'Appeal submitted'
+    })
+
+    await file.save()
+
+    res.status(200).json({
+      success: true,
+      message: 'Appeal submitted successfully. File returned to processing.',
+      data: {
+        fileId: file._id,
+        plotNumber: file.plotNumber,
+        status: file.status,
+        currentStage: file.currentStage
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Surveyor updates their submitted file
+const updateFile = async (req, res) => {
+  try {
+    const { fileId } = req.params
+
+    const file = await File.findById(fileId)
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' })
+    }
+
+    if (file.surveyorId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this file'
+      })
+    }
+
+    const editableStatuses = ['submitted', 'rework']
+    if (!editableStatuses.includes(file.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'File can only be updated when in submitted or rework status'
+      })
+    }
+
+    // Add new documents if uploaded
+    if (req.files && req.files.length > 0) {
+      const newDocs = req.files.map(f => ({
+        url: f.path,
+        name: f.originalname,
+        uploadedAt: new Date()
+      }))
+      file.documents = [...file.documents, ...newDocs]
+    }
+
+    await logAction({
+      fileId: file._id,
+      action: 'Surveyor updated file documents',
+      performedBy: req.user.id,
+      role: req.user.role,
+      remarks: 'File updated by surveyor'
+    })
+
+    await file.save()
+
+    res.status(200).json({
+      success: true,
+      message: 'File updated successfully',
+      data: file
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
 // Surveyor resubmits file after rework
 const resubmitFile = async (req, res) => {
   try {
@@ -215,10 +419,7 @@ const resubmitFile = async (req, res) => {
 
     const file = await File.findById(fileId)
     if (!file) {
-      return res.status(404).json({
-        success: false,
-        message: 'File not found'
-      })
+      return res.status(404).json({ success: false, message: 'File not found' })
     }
 
     if (file.surveyorId.toString() !== req.user.id) {
@@ -248,7 +449,7 @@ const resubmitFile = async (req, res) => {
 
     await logAction({
       fileId: file._id,
-      action: `File resubmitted after rework`,
+      action: 'File resubmitted after rework',
       performedBy: req.user.id,
       role: req.user.role,
       remarks: remarks || 'File corrected and resubmitted'
@@ -256,7 +457,6 @@ const resubmitFile = async (req, res) => {
 
     await file.save()
 
-    // Send email notification
     const surveyor = await User.findById(file.surveyorId)
     if (surveyor) {
       await sendStatusEmail({
@@ -268,7 +468,6 @@ const resubmitFile = async (req, res) => {
       })
     }
 
-    // Real time notification
     global.io.to(file.surveyorId.toString()).emit('fileStatusUpdate', {
       plotNumber: file.plotNumber,
       status: file.status,
@@ -286,21 +485,18 @@ const resubmitFile = async (req, res) => {
       }
     })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 }
 
-// Get files in queue for officer
+// Get files in queue for officer/approver
 const getQueue = async (req, res) => {
   try {
     let query = {}
 
     if (req.user.role === 'officer') {
-      query.status = { 
-        $in: ['submitted', 'capturing', 'examination', 'dispatch'] 
+      query.status = {
+        $in: ['submitted', 'capturing', 'examination', 'dispatch']
       }
     }
 
@@ -318,11 +514,8 @@ const getQueue = async (req, res) => {
       data: files
     })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 }
 
-module.exports = { processGate, resubmitFile, getQueue }
+module.exports = { processGate, rejectFile, appealFile, updateFile, resubmitFile, getQueue }

@@ -4,9 +4,10 @@ import { useState } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Badge from '@/components/ui/Badge'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline'
+import DocumentViewer from '@/components/ui/DocumentViewer'
 import { searchPlotNumber } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Search, FileText } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -125,21 +126,7 @@ export default function SearchPage() {
                 {result.file.documents?.length > 0 && (
                   <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
                     <h3 className="font-semibold text-slate-800 mb-4">Documents</h3>
-                    <div className="space-y-2">
-                      {result.file.documents.map((doc, i) => (
-                        <a
-                        
-                          key={i}
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-indigo-50 transition"
-                        >
-                          <FileText size={16} className="text-indigo-600" />
-                          <span className="text-sm text-indigo-700">{doc.name}</span>
-                        </a>
-                      ))}
-                    </div>
+                    <DocumentViewer documents={result.file.documents} />
                   </div>
                 )}
 

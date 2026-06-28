@@ -32,8 +32,8 @@ export default function ApproverDashboard() {
   return (
     <DashboardLayout title="Approver Dashboard">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <StatCard title="Pending approval" value={queue.length} icon={<Clock size={20} className="text-amber-700" />}       color="bg-amber-50" />
-        <StatCard title="Total reviewed"   value={0}            icon={<CheckCircle size={20} className="text-emerald-700" />} color="bg-emerald-50" />
+        <StatCard title="Pending approval" value={queue.length} icon={<Clock size={20} className="text-amber-700" />} color="bg-amber-50" />
+        <StatCard title="Total reviewed" value={0} icon={<CheckCircle size={20} className="text-emerald-700" />} color="bg-emerald-50" />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
@@ -66,9 +66,7 @@ export default function ApproverDashboard() {
                   <td className="py-3 font-medium font-mono text-xs">{file.plotNumber}</td>
                   <td className="py-3">{file.surveyorId?.name}</td>
                   <td className="py-3"><Badge status={file.status} /></td>
-                  <td className="py-3 text-slate-500">
-                    {new Date(file.createdAt).toLocaleDateString()}
-                  </td>
+                  <td className="py-3 text-slate-500">{new Date(file.createdAt).toLocaleDateString()}</td>
                   <td className="py-3">
                     <button
                       onClick={() => router.push(`/approver/review/${file._id}`)}

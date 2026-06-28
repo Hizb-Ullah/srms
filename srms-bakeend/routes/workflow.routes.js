@@ -1,34 +1,23 @@
 const express = require('express')
 const router = express.Router()
-const { 
-  processGate, 
-  resubmitFile, 
-  getQueue 
+const {
+  processGate,
+  rejectFile,
+  appealFile,
+  updateFile,
+  resubmitFile,
+  getQueue
 } = require('../controllers/workflow.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
+const upload = require('../middleware/upload.middleware')
 
-// All routes require login
 router.use(protect)
 
-// Officer and approver — process a gate
-router.patch(
-  '/:fileId/gate',
-  authorize('officer', 'approver'),
-  processGate
-)
-
-// Surveyor — resubmit after rework
-router.patch(
-  '/:fileId/resubmit',
-  authorize('surveyor'),
-  resubmitFile
-)
-
-// Officer and approver — get their queue
-router.get(
-  '/queue',
-  authorize('officer', 'approver'),
-  getQueue
-)
+router.patch('/:fileId/gate',     authorize('officer', 'approver'), processGate)
+router.patch('/:fileId/reject',   authorize('officer', 'approver', 'admin'), rejectFile)
+router.patch('/:fileId/appeal',   authorize('surveyor'), appealFile)
+router.patch('/:fileId/update',   authorize('surveyor'), upload.array('documents', 10), updateFile)
+router.patch('/:fileId/resubmit', authorize('surveyor'), resubmitFile)
+router.get('/queue',              authorize('officer', 'approver'), getQueue)
 
 module.exports = router

@@ -7,6 +7,8 @@ export default function Badge({ status }) {
     dispatch:    'bg-emerald-100 text-emerald-700',
     archived:    'bg-slate-100 text-slate-600',
     rework:      'bg-rose-100 text-rose-700',
+    rejected:    'bg-red-200 text-red-800',
+    appealed:    'bg-orange-100 text-orange-700',
     pending:     'bg-slate-100 text-slate-500',
     passed:      'bg-emerald-100 text-emerald-700',
     failed:      'bg-rose-100 text-rose-700',
