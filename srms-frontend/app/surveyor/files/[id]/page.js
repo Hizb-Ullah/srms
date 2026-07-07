@@ -5,10 +5,10 @@ import DashboardLayout from '@/app/dashboard-layout'
 import Badge from '@/components/ui/Badge'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline'
 import DocumentViewer from '@/components/ui/DocumentViewer'
-import { getFile, getFileAudit, resubmitFile, appealFile, updateFile } from '@/lib/api'
+import { getFile, getFileAudit, resubmitFile, appealFile } from '@/lib/api'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { AlertTriangle, FileText, Upload, RotateCcw } from 'lucide-react'
+import { AlertTriangle, RotateCcw } from 'lucide-react'
 
 export default function FileDetailPage() {
   const [file, setFile] = useState(null)
@@ -18,8 +18,6 @@ export default function FileDetailPage() {
   const [appealRemarks, setAppealRemarks] = useState('')
   const [resubmitting, setResubmitting] = useState(false)
   const [appealing, setAppealing] = useState(false)
-  const [updating, setUpdating] = useState(false)
-  const [newDocs, setNewDocs] = useState([])
   const router = useRouter()
   const { id } = useParams()
 
@@ -63,26 +61,6 @@ export default function FileDetailPage() {
       toast.error(error.response?.data?.message || 'Failed to submit appeal')
     } finally {
       setAppealing(false)
-    }
-  }
-
-  const handleUpdate = async () => {
-    if (newDocs.length === 0) {
-      toast.error('Please select documents to upload')
-      return
-    }
-    setUpdating(true)
-    try {
-      const formData = new FormData()
-      newDocs.forEach(doc => formData.append('documents', doc))
-      await updateFile(id, formData)
-      toast.success('Documents added successfully')
-      setNewDocs([])
-      fetchFile()
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update file')
-    } finally {
-      setUpdating(false)
     }
   }
 
@@ -150,36 +128,13 @@ export default function FileDetailPage() {
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
             <h3 className="font-semibold text-slate-800 mb-4">Documents</h3>
-            <DocumentViewer documents={file.documents} />
-
-            {isEditable && (
-              <div className="border-t border-slate-100 pt-4 mt-4">
-                <p className="text-sm font-medium text-slate-600 mb-2">Add more documents</p>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={(e) => setNewDocs(Array.from(e.target.files))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-2"
-                />
-                {newDocs.length > 0 && (
-                  <div className="mb-2">
-                    {newDocs.map((doc, i) => (
-                      <p key={i} className="text-xs text-slate-600 flex items-center gap-1">
-                        <FileText size={12} /> {doc.name}
-                      </p>
-                    ))}
-                  </div>
-                )}
-                <button
-                  onClick={handleUpdate}
-                  disabled={updating || newDocs.length === 0}
-                  className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50"
-                >
-                  <Upload size={14} /> {updating ? 'Uploading...' : 'Upload documents'}
-                </button>
-              </div>
-            )}
+            <DocumentViewer
+              documents={file.documents}
+              fileId={file._id}
+              canEdit={isEditable}
+              onDocumentDeleted={fetchFile}
+              onDocumentsAdded={fetchFile}
+            />
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
