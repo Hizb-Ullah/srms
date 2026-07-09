@@ -84,6 +84,7 @@ export default function OfficerDocumentsPage() {
                   >
                     <Eye size={13} /> View
                   </button>
+                  <a
                   
                     href={viewUrl}
                     target="_blank"
