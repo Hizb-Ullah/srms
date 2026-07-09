@@ -42,6 +42,7 @@ export const rejectFile    = (fileId, data) => API.patch(`/workflow/${fileId}/re
 export const appealFile    = (fileId, data) => API.patch(`/workflow/${fileId}/appeal`, data)
 export const updateFile    = (fileId, data) => API.patch(`/workflow/${fileId}/update`, data)
 export const resubmitFile  = (fileId, data) => API.patch(`/workflow/${fileId}/resubmit`, data)
+export const deleteDocument = (fileId, docIndex) => API.delete(`/workflow/${fileId}/documents/${docIndex}`)
 export const getQueue      = ()             => API.get('/workflow/queue')
 
 // Admin
