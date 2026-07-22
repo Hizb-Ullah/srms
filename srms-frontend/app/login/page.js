@@ -23,11 +23,13 @@ export default function LoginPage() {
       login(res.data.token, res.data.user)
       toast.success('Login successful')
 
-      const role = res.data.user.role
-      if (role === 'surveyor') router.push('/surveyor')
-      if (role === 'officer') router.push('/officer')
-      if (role === 'approver') router.push('/approver')
-      if (role === 'admin') router.push('/admin')
+      const { role, group } = res.data.user
+      if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/lot-requests')
+      else if (group === 'DSM') router.push('/lot-allocator')
+      else if (role === 'surveyor') router.push('/surveyor')
+      else if (role === 'officer') router.push('/officer')
+      else if (role === 'approver') router.push('/approver')
+      else if (role === 'admin') router.push('/admin')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {

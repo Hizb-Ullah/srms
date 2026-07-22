@@ -6,6 +6,7 @@ const {
   appealFile,
   updateFile,
   resubmitFile,
+  deleteDocument,
   getQueue
 } = require('../controllers/workflow.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
@@ -18,6 +19,7 @@ router.patch('/:fileId/reject',   authorize('officer', 'approver', 'admin'), rej
 router.patch('/:fileId/appeal',   authorize('surveyor'), appealFile)
 router.patch('/:fileId/update',   authorize('surveyor'), upload.array('documents', 10), updateFile)
 router.patch('/:fileId/resubmit', authorize('surveyor'), resubmitFile)
+router.delete('/:fileId/documents/:docIndex', authorize('surveyor'), deleteDocument)
 router.get('/queue',              authorize('officer', 'approver'), getQueue)
 
 module.exports = router

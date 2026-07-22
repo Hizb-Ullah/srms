@@ -173,10 +173,33 @@ const searchByPlotNumber = async (req, res) => {
     res.status(500).json({ success: false, message: error.message })
   }
 }
+// Delete an unsubmitted plot number (surveyor only, before file is submitted)
+const deletePlotNumber = async (req, res) => {
+  try {
+    const File = require('../models/File.model')
+    const plot = await PlotNumber.findOne({ _id: req.params.id, surveyorId: req.user.id })
+    if (!plot) return res.status(404).json({ success: false, message: 'Plot not found' })
+
+    const fileExists = await File.findOne({ plotNumber: plot.plotNumber })
+    if (fileExists) return res.status(400).json({ success: false, message: 'Cannot delete — file already submitted for this plot' })
+
+    await plot.deleteOne()
+    await AuditLog.create({
+      action: `Plot number ${plot.plotNumber} deleted by surveyor`,
+      performedBy: req.user.id,
+      role: req.user.role
+    })
+    res.status(200).json({ success: true, message: 'Plot number deleted' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
 module.exports = { 
   requestPlotNumber, 
   getMyPlotNumbers, 
   getPlotNumber,
   getAllPlotNumbers,
-  searchByPlotNumber
+  searchByPlotNumber,
+  deletePlotNumber
 }

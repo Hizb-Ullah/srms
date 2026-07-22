@@ -518,4 +518,28 @@ const getQueue = async (req, res) => {
   }
 }
 
-module.exports = { processGate, rejectFile, appealFile, updateFile, resubmitFile, getQueue }
+// Delete a single document from a file (surveyor only, submitted/rework status)
+const deleteDocument = async (req, res) => {
+  try {
+    const { fileId, docIndex } = req.params
+    const file = await File.findById(fileId)
+    if (!file) return res.status(404).json({ success: false, message: 'File not found' })
+    if (file.surveyorId.toString() !== req.user.id)
+      return res.status(403).json({ success: false, message: 'Not authorized' })
+    if (!['submitted', 'rework'].includes(file.status))
+      return res.status(400).json({ success: false, message: 'Cannot edit file at this stage' })
+
+    const idx = parseInt(docIndex, 10)
+    if (idx < 0 || idx >= file.documents.length)
+      return res.status(400).json({ success: false, message: 'Invalid document index' })
+
+    file.documents.splice(idx, 1)
+    await file.save()
+    await logAction({ fileId: file._id, action: 'Document deleted by surveyor', performedBy: req.user.id, role: req.user.role })
+    res.status(200).json({ success: true, message: 'Document deleted' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+module.exports = { processGate, rejectFile, appealFile, updateFile, resubmitFile, deleteDocument, getQueue }

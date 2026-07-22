@@ -79,4 +79,98 @@ const sendStatusEmail = async ({ to, name, plotNumber, status, remarks }) => {
   }
 }
 
-module.exports = { sendStatusEmail }
+// --- Lot Allocation feature emails (additive) ---
+
+const ACCOUNTS_OFFICE_EMAIL = process.env.ACCOUNTS_OFFICE_EMAIL
+
+// Notify the Lot Allocator (or Files Controller / Director) when a new lot
+// allocation request is submitted. Client confirmed both in-app AND email
+// notifications are required.
+const sendLotAllocatorNotificationEmail = async ({ to, name, village, requestType, plotNumbers }) => {
+  try {
+    await transporter.sendMail({
+      from: `"SRMS - Department of Surveys & Mapping" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `New Lot Allocation Request — ${village}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a3c5e; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Department of Surveys & Mapping</h1>
+            <p style="color: #ccc; margin: 5px 0;">Survey Record Management System</p>
+          </div>
+          <div style="padding: 30px; background: #f9f9f9;">
+            <p>Dear <strong>${name}</strong>,</p>
+            <p>A new lot allocation request has been submitted and requires your review.</p>
+            <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #666;">Village</td><td style="padding: 8px 0; font-weight: bold;">${village}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Request Type</td><td style="padding: 8px 0; font-weight: bold;">${requestType}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Plot Number(s)</td><td style="padding: 8px 0; font-weight: bold;">${plotNumbers.join(', ')}</td></tr>
+              </table>
+            </div>
+            <p style="color: #666; font-size: 14px;">Please log in to SRMS to review this request.</p>
+          </div>
+          <div style="background: #1a3c5e; padding: 15px; text-align: center;">
+            <p style="color: #ccc; margin: 0; font-size: 12px;">This is an automated message from SRMS. Please do not reply to this email.</p>
+          </div>
+        </div>
+      `
+    })
+    console.log(`Lot allocator notification email sent to ${to}`)
+  } catch (error) {
+    console.error('Email error:', error.message)
+  }
+}
+
+// On final approval, automatically email the Accounts office with the POP
+// attached. Client confirmed a single fixed address (set via
+// ACCOUNTS_OFFICE_EMAIL in .env).
+const sendAccountsOfficeEmail = async ({ request }) => {
+  try {
+    if (!ACCOUNTS_OFFICE_EMAIL) {
+      console.error('ACCOUNTS_OFFICE_EMAIL is not configured in .env — skipping Accounts office email')
+      return
+    }
+
+    const attachments = request.popDocumentUrl
+      ? [{ filename: `POP-${request._id}`, path: request.popDocumentUrl }]
+      : []
+
+    const plotNumbers = request.plots.map((p) => p.plotNumber).join(', ')
+    const dsmNumbers = request.plots.map((p) => p.dsmNumber).join(', ')
+
+    await transporter.sendMail({
+      from: `"SRMS - Department of Surveys & Mapping" <${process.env.EMAIL_USER}>`,
+      to: ACCOUNTS_OFFICE_EMAIL,
+      subject: `Lot Allocation Approved — ${request.village} — Plot(s) ${plotNumbers}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a3c5e; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Department of Surveys & Mapping</h1>
+            <p style="color: #ccc; margin: 5px 0;">Survey Record Management System</p>
+          </div>
+          <div style="padding: 30px; background: #f9f9f9;">
+            <p>A lot allocation request has received final approval. Proof of Payment is attached.</p>
+            <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #666;">Village</td><td style="padding: 8px 0; font-weight: bold;">${request.village}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Request Type</td><td style="padding: 8px 0; font-weight: bold;">${request.requestType}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Plot Number(s)</td><td style="padding: 8px 0; font-weight: bold;">${plotNumbers}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">DSM Number(s)</td><td style="padding: 8px 0; font-weight: bold;">${dsmNumbers}</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="background: #1a3c5e; padding: 15px; text-align: center;">
+            <p style="color: #ccc; margin: 0; font-size: 12px;">This is an automated message from SRMS. Please do not reply to this email.</p>
+          </div>
+        </div>
+      `,
+      attachments
+    })
+    console.log(`Accounts office email sent to ${ACCOUNTS_OFFICE_EMAIL}`)
+  } catch (error) {
+    console.error('Email error:', error.message)
+  }
+}
+
+module.exports = { sendStatusEmail, sendLotAllocatorNotificationEmail, sendAccountsOfficeEmail }

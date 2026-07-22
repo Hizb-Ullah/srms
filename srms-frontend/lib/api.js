@@ -26,6 +26,7 @@ export const checkAdminExists     = ()     => API.get('/auth/admin-exists')
 // Plots
 export const requestPlot       = ()           => API.post('/plots/request')
 export const getMyPlots        = ()           => API.get('/plots/my')
+export const deletePlot        = (id)         => API.delete(`/plots/${id}`)
 export const getAllPlots        = ()           => API.get('/plots')
 export const searchPlotNumber  = (plotNumber) => API.get(`/plots/search/${plotNumber}`)
 
@@ -56,5 +57,16 @@ export const getDashboard      = ()           => API.get('/admin/dashboard')
 export const getAuditLogs      = ()           => API.get('/admin/audit-logs')
 export const getResetRequests  = ()           => API.get('/admin/reset-requests')
 export const resolveResetRequest = (id)       => API.patch(`/admin/reset-requests/${id}/resolve`)
+
+// Lot Allocation
+export const createLotRequest      = (data)       => API.post('/lot-requests', data)
+export const getMyLotRequests      = ()           => API.get('/lot-requests/my')
+export const getAllLotRequests      = ()           => API.get('/lot-requests')
+export const reviewLotRequest      = (id)         => API.patch(`/lot-requests/${id}/review`)
+export const uploadPop             = (id, data)   => API.post(`/lot-requests/${id}/pop`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const markPaymentReceived   = (id)         => API.patch(`/lot-requests/${id}/payment-received`)
+export const approveLotRequest     = (id)         => API.patch(`/lot-requests/${id}/approve`)
+export const rejectLotRequest      = (id, data)   => API.patch(`/lot-requests/${id}/reject`, data)
+export const getLastPlotNumber     = (village)    => API.get(`/lot-requests/villages/${village}/last-plot-number`)
 
 export default API

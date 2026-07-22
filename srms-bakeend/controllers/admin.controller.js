@@ -96,7 +96,7 @@ const getAuditLogs = async (req, res) => {
 // Create a new user (admin only)
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body
+    const { name, email, password, role, group, subRole, surveyorCode } = req.body
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({
@@ -120,7 +120,10 @@ const createUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role
+      role,
+      ...(group && { group }),
+      ...(subRole && { subRole }),
+      ...(surveyorCode && { surveyorCode })
     })
 
     res.status(201).json({
@@ -130,7 +133,10 @@ const createUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        group: user.group,
+        subRole: user.subRole,
+        surveyorCode: user.surveyorCode
       }
     })
   } catch (error) {
@@ -141,7 +147,7 @@ const createUser = async (req, res) => {
 // Update a user's details (admin only)
 const updateUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body
+    const { name, email, role, group, subRole, surveyorCode } = req.body
     const user = await User.findById(req.params.id)
 
     if (!user) {
@@ -162,6 +168,9 @@ const updateUser = async (req, res) => {
     if (name) user.name = name
     if (email) user.email = email
     if (role) user.role = role
+    if (group !== undefined) user.group = group || undefined
+    if (subRole !== undefined) user.subRole = subRole || undefined
+    if (surveyorCode !== undefined) user.surveyorCode = surveyorCode || undefined
 
     await user.save()
 
@@ -172,7 +181,10 @@ const updateUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        group: user.group,
+        subRole: user.subRole,
+        surveyorCode: user.surveyorCode
       }
     })
   } catch (error) {

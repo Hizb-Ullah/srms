@@ -37,4 +37,22 @@ const authorize = (...roles) => {
   }
 }
 
-module.exports = { protect, authorize }
+// Capability-based guard for the new DSM/Private/LandBoard group + sub-role
+// RBAC (Lot Allocation feature). Kept separate from authorize() above so
+// none of the existing role-based routes are affected.
+const { hasCapability } = require('../config/permissions')
+
+const authorizeCapability = (...capabilities) => {
+  return (req, res, next) => {
+    const ok = capabilities.some((cap) => hasCapability(req.user, cap))
+    if (!ok) {
+      return res.status(403).json({
+        success: false,
+        message: `Your role (${req.user.group || 'none'} / ${req.user.subRole || 'none'}) is not authorized for this action`
+      })
+    }
+    next()
+  }
+}
+
+module.exports = { protect, authorize, authorizeCapability }

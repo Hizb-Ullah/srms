@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import { submitFile, getMyPlots } from '@/lib/api'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { FileText } from 'lucide-react'
 
-export default function SubmitFilePage() {
+function SubmitFileContent() {
   const [plots, setPlots] = useState([])
   const [selectedPlot, setSelectedPlot] = useState('')
   const [documents, setDocuments] = useState([])
@@ -158,5 +158,13 @@ export default function SubmitFilePage() {
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function SubmitFilePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-500">Loading...</div>}>
+      <SubmitFileContent />
+    </Suspense>
   )
 }

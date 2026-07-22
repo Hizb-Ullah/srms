@@ -5,7 +5,8 @@ const {
   getMyPlotNumbers,
   getPlotNumber,
   getAllPlotNumbers,
-  searchByPlotNumber
+  searchByPlotNumber,
+  deletePlotNumber
 } = require('../controllers/plot.controller')
 const { protect, authorize } = require('../middleware/auth.middleware')
 
@@ -15,6 +16,7 @@ router.use(protect)
 // Surveyor routes
 router.post('/request', authorize('surveyor'), requestPlotNumber)
 router.get('/my', authorize('surveyor'), getMyPlotNumbers)
+router.delete('/:id', authorize('surveyor'), deletePlotNumber)
 
 // Shared routes
 router.get('/:id', getPlotNumber)

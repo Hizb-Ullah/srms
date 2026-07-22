@@ -11,7 +11,9 @@ export default function DashboardRedirect() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.push(`/${user.role}`)
+        if (user.group === 'Private' || user.group === 'LandBoard') router.push('/surveyor/lot-requests')
+        else if (user.group === 'DSM') router.push('/lot-allocator')
+        else router.push(`/${user.role}`)
       } else {
         router.push('/login')
       }

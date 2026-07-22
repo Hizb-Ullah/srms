@@ -22,7 +22,10 @@ export default function AdminUsersPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'surveyor' })
+  const DSM_SUBROLES = ['Director','Files Controller','Lot Allocator','File Registration and Reservation','File Capturing','File Examination','File Approval']
+  const SURVEYOR_SUBROLES = ['Registered Land Surveyor','Assistant Surveyor']
+
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'surveyor', group: '', subRole: '' })
   const [resetPassword, setResetPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -53,7 +56,7 @@ export default function AdminUsersPage() {
   }
 
   const openCreate = () => {
-    setForm({ name: '', email: '', password: '', role: 'surveyor' })
+    setForm({ name: '', email: '', password: '', role: 'surveyor', group: '', subRole: '' })
     setShowPassword(false)
     setCreateOpen(true)
   }
@@ -75,7 +78,7 @@ export default function AdminUsersPage() {
 
   const openEdit = (user) => {
     setSelectedUser(user)
-    setForm({ name: user.name, email: user.email, password: '', role: user.role })
+    setForm({ name: user.name, email: user.email, password: '', role: user.role, group: user.group || '', subRole: user.subRole || '' })
     setEditOpen(true)
   }
 
@@ -86,7 +89,9 @@ export default function AdminUsersPage() {
       await updateUser(selectedUser._id, {
         name: form.name,
         email: form.email,
-        role: form.role
+        role: form.role,
+        group: form.group || undefined,
+        subRole: form.subRole || undefined
       })
       toast.success('User updated successfully')
       setEditOpen(false)
@@ -170,7 +175,7 @@ export default function AdminUsersPage() {
                 <tr key={user._id} className="border-b border-slate-50 hover:bg-slate-50 transition">
                   <td className="py-3 font-medium">{user.name}</td>
                   <td className="py-3">{user.email}</td>
-                  <td className="py-3"><Badge status={user.role} /></td>
+                  <td className="py-3"><Badge status={user.role} />{user.group && <span className="ml-1.5 text-xs text-slate-400">{user.group}/{user.subRole}</span>}</td>
                   <td className="py-3">
                     <span className={user.isLocked ? 'text-rose-600 font-medium' : 'text-emerald-600 font-medium'}>
                       {user.isLocked ? 'Locked' : 'Active'}
@@ -269,7 +274,7 @@ export default function AdminUsersPage() {
             <label className="block text-sm font-medium text-slate-600 mb-1">Role</label>
             <select
               value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              onChange={(e) => setForm({ ...form, role: e.target.value, group: '', subRole: '' })}
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="surveyor">Surveyor</option>
@@ -277,6 +282,34 @@ export default function AdminUsersPage() {
               <option value="approver">Approver</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Group (Lot Allocation)</label>
+            <select
+              value={form.group}
+              onChange={(e) => setForm({ ...form, group: e.target.value, subRole: '' })}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">— None —</option>
+              <option value="DSM">DSM</option>
+              <option value="Private">Private</option>
+              <option value="LandBoard">Land Board</option>
+            </select>
+          </div>
+          {form.group && (
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Sub-Role</label>
+              <select
+                value={form.subRole}
+                onChange={(e) => setForm({ ...form, subRole: e.target.value })}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">— Select sub-role —</option>
+                {(form.group === 'DSM' ? DSM_SUBROLES : SURVEYOR_SUBROLES).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             type="submit"
             disabled={submitting}
@@ -292,28 +325,19 @@ export default function AdminUsersPage() {
         <form onSubmit={handleEdit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Full name</label>
-            <input
-              type="text"
-              required
-              value={form.name}
+            <input type="text" required value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={form.email}
+            <input type="email" required value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Role</label>
-            <select
-              value={form.role}
+            <select value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               disabled={selectedUser?.role === 'admin'}
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50 disabled:text-slate-400"
@@ -324,9 +348,33 @@ export default function AdminUsersPage() {
               {selectedUser?.role === 'admin' && <option value="admin">Admin</option>}
             </select>
           </div>
-          <button
-            type="submit"
-            disabled={submitting}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 mb-1">Group (Lot Allocation)</label>
+            <select value={form.group}
+              onChange={(e) => setForm({ ...form, group: e.target.value, subRole: '' })}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">— None —</option>
+              <option value="DSM">DSM</option>
+              <option value="Private">Private</option>
+              <option value="LandBoard">Land Board</option>
+            </select>
+          </div>
+          {form.group && (
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Sub-Role</label>
+              <select value={form.subRole}
+                onChange={(e) => setForm({ ...form, subRole: e.target.value })}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">— Select sub-role —</option>
+                {(form.group === 'DSM' ? DSM_SUBROLES : SURVEYOR_SUBROLES).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button type="submit" disabled={submitting}
             className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
           >
             {submitting ? 'Saving...' : 'Save changes'}

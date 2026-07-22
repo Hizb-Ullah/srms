@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
-import { requestPlot, getMyPlots } from '@/lib/api'
+import { requestPlot, getMyPlots, deletePlot } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { Hash, CheckCircle2, FileCheck, FileX } from 'lucide-react'
+import { Hash, FileCheck, FileX, Trash2 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
 export default function RequestNumberPage() {
   const [loading, setLoading] = useState(false)
   const [plots, setPlots] = useState([])
   const [fetching, setFetching] = useState(true)
+  const [deletingId, setDeletingId] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -39,6 +40,20 @@ export default function RequestNumberPage() {
       toast.error(error.response?.data?.message || 'Failed to request plot number')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (plot) => {
+    if (!window.confirm(`Delete ${plot.plotNumber}? This cannot be undone.`)) return
+    setDeletingId(plot._id)
+    try {
+      await deletePlot(plot._id)
+      toast.success('Plot number deleted')
+      fetchPlots()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -102,12 +117,22 @@ export default function RequestNumberPage() {
                     Issued {new Date(plot.createdAt).toLocaleDateString()}
                   </p>
                   {!plot.fileSubmitted && (
-                    <button
-                      onClick={() => router.push(`/surveyor/submit?plot=${plot.plotNumber}&srn=${plot.surveyRecordNumber}`)}
-                      className="mt-3 w-full text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg py-1.5 hover:bg-indigo-50 transition"
-                    >
-                      Submit file for this plot
-                    </button>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => router.push(`/surveyor/submit?plot=${plot.plotNumber}&srn=${plot.surveyRecordNumber}`)}
+                        className="flex-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg py-1.5 hover:bg-indigo-50 transition"
+                      >
+                        Submit file for this plot
+                      </button>
+                      <button
+                        onClick={() => handleDelete(plot)}
+                        disabled={deletingId === plot._id}
+                        className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50 transition disabled:opacity-50"
+                        title="Delete this plot number"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   )}
                 </div>
               ))}
