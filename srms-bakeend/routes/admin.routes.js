@@ -18,16 +18,16 @@ const { protect, authorize, authorizeCapability } = require('../middleware/auth.
 router.use(protect)
 
 // Admin-only routes
-router.get('/users',                  authorize('admin'), getAllUsers)
-router.post('/users',                 authorize('admin'), createUser)
-router.put('/users/:id',              authorize('admin'), updateUser)
-router.delete('/users/:id',           authorize('admin'), deleteUser)
-router.patch('/users/:id/lock',       authorize('admin'), toggleUserLock)
-router.patch('/users/:id/reset-password', authorize('admin'), resetUserPassword)
-router.get('/dashboard',              authorize('admin'), getDashboardStats)
-router.get('/audit-logs',             authorize('admin'), getAuditLogs)
-router.get('/reset-requests',         authorize('admin'), getResetRequests)
-router.patch('/reset-requests/:id/resolve', authorize('admin'), resolveResetRequest)
+router.get('/users',                  authorize('admin', 'director'), getAllUsers)
+router.post('/users',                 authorize('admin', 'director'), createUser)
+router.put('/users/:id',              authorize('admin', 'director'), updateUser)
+router.delete('/users/:id',           authorize('admin', 'director'), deleteUser)
+router.patch('/users/:id/lock',       authorize('admin', 'director'), toggleUserLock)
+router.patch('/users/:id/reset-password', authorize('admin', 'director'), resetUserPassword)
+router.get('/dashboard',              authorize('admin', 'director'), getDashboardStats)
+router.get('/audit-logs',             authorize('admin', 'director'), getAuditLogs)
+router.get('/reset-requests',         authorize('admin', 'director'), getResetRequests)
+router.patch('/reset-requests/:id/resolve', authorize('admin', 'director'), resolveResetRequest)
 
 // Director approves pending user accounts
 router.patch('/users/:id/approve',    authorizeCapability('approve_users'), approveUser)

@@ -51,7 +51,7 @@ export default function LoginPage() {
       else if (role === 'surveyor') router.push('/surveyor')
       else if (role === 'officer') router.push('/officer')
       else if (role === 'approver') router.push('/approver')
-      else if (role === 'admin') router.push('/admin')
+      else if (role === 'admin' || role === 'director') router.push('/admin')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {

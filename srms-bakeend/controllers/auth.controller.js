@@ -138,7 +138,7 @@ const resetAdmin = async (req, res) => {
     const salt = await bcrypt.genSalt(12)
     const hashedPassword = await bcrypt.hash('Admin@123', salt)
     const result = await User.findOneAndUpdate(
-      { role: 'admin' },
+      { role: { $in: ['admin', 'director'] } },
       { $set: { password: hashedPassword, isLocked: false, failedLoginAttempts: 0 } }
     )
     if (!result) {

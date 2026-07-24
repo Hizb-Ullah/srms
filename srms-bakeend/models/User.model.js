@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['surveyor', 'officer', 'approver', 'admin'],
+    enum: ['surveyor', 'officer', 'approver', 'admin', 'director'],
     default: 'surveyor'
   },
   // --- Lot Allocation feature: additive group/sub-role RBAC ---
