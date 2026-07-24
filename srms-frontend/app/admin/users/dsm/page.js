@@ -42,7 +42,7 @@ export default function DsmEmployeesPage() {
   const [newPw, setNewPw]           = useState('')
   const [saving, setSaving]         = useState(false)
 
-  const isDirector = currentUser?.group === 'DSM' && currentUser?.subRole === 'Director'
+  const canApprove = currentUser?.role === 'admin' || (currentUser?.group === 'DSM' && currentUser?.subRole === 'Director')
 
   const loadUsers = async () => {
     try {
@@ -163,7 +163,7 @@ export default function DsmEmployeesPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-amber-600 text-xs font-medium">Pending</span>
-                        {isDirector && (
+                        {canApprove && (
                           <button onClick={() => handleApprove(u._id)}
                             className="flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-xs hover:bg-emerald-700 transition">
                             <CheckCircle size={11} /> Approve
