@@ -26,7 +26,12 @@ const loginValidation = [
     .notEmpty().withMessage('Password is required')
 ]
 
-router.post('/register', registerValidation, register)
+router.post('/register', (req, res) => {
+  res.status(403).json({
+    success: false,
+    message: 'Self-registration is disabled. Contact your administrator to create an account.'
+  })
+})
 router.post('/login', loginValidation, login)
 router.get('/me', protect, getMe)
 router.post('/forgot-password', requestPasswordReset)

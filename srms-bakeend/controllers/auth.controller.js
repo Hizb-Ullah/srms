@@ -50,7 +50,7 @@ const login = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() })
     }
-    const { email, password } = req.body
+    const { email, password, surveyorCode } = req.body
     const user = await User.findOne({ email })
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
@@ -60,6 +60,12 @@ const login = async (req, res) => {
         success: false,
         message: 'Account locked due to too many failed attempts. Contact admin.'
       })
+    }
+    // If user has a surveyorCode, it must be provided and must match
+    if (user.surveyorCode) {
+      if (!surveyorCode || String(surveyorCode).trim() !== String(user.surveyorCode).trim()) {
+        return res.status(400).json({ success: false, message: 'Invalid credentials' })
+      }
     }
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
@@ -77,7 +83,7 @@ const login = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, group: user.group, subRole: user.subRole, surveyorCode: user.surveyorCode }
     })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })

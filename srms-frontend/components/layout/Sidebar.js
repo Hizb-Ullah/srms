@@ -34,9 +34,9 @@ const menuItems = {
   admin: [
     { label: 'Dashboard',      path: '/admin',                    icon: Home },
     { label: 'Users',          path: null,                        icon: Users, children: [
-      { label: 'DSM Users',      path: '/admin/users/dsm' },
-      { label: 'Private Users',  path: '/admin/users/private' },
-      { label: 'Land Board',     path: '/admin/users/landboard' },
+      { label: 'DSM Employees',        path: '/admin/users/dsm' },
+      { label: 'Private Surveyors',    path: '/admin/users/private' },
+      { label: 'Land Board Surveyors', path: '/admin/users/landboard' },
     ]},
     { label: 'Reset Requests', path: '/admin/reset-requests',     icon: KeyRound },
     { label: 'All Files',      path: '/admin/files',              icon: FolderOpen },

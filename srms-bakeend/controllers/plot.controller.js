@@ -8,6 +8,8 @@ const {
 // Request a new plot number
 const requestPlotNumber = async (req, res) => {
   try {
+    const { location, requestType, cadastreNumber, landBoard } = req.body
+
     // Generate unique numbers
     const plotNumber = await generatePlotNumber()
     const surveyRecordNumber = await generateSurveyRecordNumber()
@@ -26,7 +28,11 @@ const requestPlotNumber = async (req, res) => {
       plotNumber,
       surveyRecordNumber,
       surveyorId: req.user.id,
-      isAssigned: true
+      isAssigned: true,
+      location: location || '',
+      requestType: requestType || 'single_plot',
+      cadastreNumber: cadastreNumber || '',
+      landBoard: landBoard || ''
     })
 
     // Log this action in audit trail
