@@ -46,12 +46,12 @@ export default function LoginPage() {
       toast.success('Login successful')
 
       const { role, group } = res.data.user
-      if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/lot-requests')
+      if (role === 'admin') router.push('/admin')
+      else if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/lot-requests')
       else if (group === 'DSM') router.push('/lot-allocator')
       else if (role === 'surveyor') router.push('/surveyor')
       else if (role === 'officer') router.push('/officer')
       else if (role === 'approver') router.push('/approver')
-      else if (role === 'admin' || role === 'director') router.push('/admin')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {

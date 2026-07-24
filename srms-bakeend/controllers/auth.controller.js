@@ -57,7 +57,7 @@ const login = async (req, res) => {
     }
     // Validate userType matches actual role
     const roleMap = {
-      admin: ['admin', 'director'],
+      admin: ['admin'],
       dsm: ['surveyor', 'officer', 'approver'],
       officer: ['officer'],
       approver: ['approver'],
@@ -66,9 +66,6 @@ const login = async (req, res) => {
       landboard: ['surveyor'],
     }
     if (userType && roleMap[userType] && !roleMap[userType].includes(user.role)) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' })
-    }
-    if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
     if (user.isLocked) {
@@ -154,7 +151,7 @@ const resetAdmin = async (req, res) => {
     const salt = await bcrypt.genSalt(12)
     const hashedPassword = await bcrypt.hash('Admin@123', salt)
     const result = await User.findOneAndUpdate(
-      { role: { $in: ['admin', 'director'] } },
+      { role: 'admin' },
       { $set: { password: hashedPassword, isLocked: false, failedLoginAttempts: 0 } }
     )
     if (!result) {
