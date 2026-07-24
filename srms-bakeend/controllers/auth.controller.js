@@ -75,13 +75,7 @@ const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
 
-    // Block login if account not yet approved by Director
-    if (!user.isApproved && user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is pending Director approval. Please contact your administrator.'
-      })
-    }
+
     user.failedLoginAttempts = 0
     user.lastLogin = new Date()
     await user.save()
