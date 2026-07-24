@@ -53,6 +53,7 @@ export const updateUser        = (id, data)   => API.put(`/admin/users/${id}`, d
 export const deleteUser        = (id)         => API.delete(`/admin/users/${id}`)
 export const toggleUserLock    = (id)         => API.patch(`/admin/users/${id}/lock`)
 export const resetUserPassword = (id, data)   => API.patch(`/admin/users/${id}/reset-password`, data)
+export const approveUserAccount = (id)        => API.patch(`/admin/users/${id}/approve`)
 export const getDashboard      = ()           => API.get('/admin/dashboard')
 export const getAuditLogs      = ()           => API.get('/admin/audit-logs')
 export const getResetRequests  = ()           => API.get('/admin/reset-requests')

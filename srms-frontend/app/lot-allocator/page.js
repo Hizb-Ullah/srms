@@ -8,7 +8,9 @@ import {
   reviewLotRequest,
   markPaymentReceived,
   approveLotRequest,
-  rejectLotRequest
+  rejectLotRequest,
+  getAllUsers,
+  approveUserAccount
 } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { ChevronDown, ChevronUp, CheckCircle, XCircle, CreditCard, ClipboardCheck } from 'lucide-react'
@@ -35,6 +37,7 @@ const STATUS_COLOR = {
 export default function LotAllocatorPage() {
   const { user } = useAuth()
   const [requests, setRequests] = useState([])
+  const [pendingUsers, setPendingUsers] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -47,6 +50,11 @@ export default function LotAllocatorPage() {
     try {
       const res = await getAllLotRequests()
       setRequests(res.data.data)
+      // Director sees pending user approvals
+      if (user?.subRole === 'Director') {
+        const uRes = await getAllUsers()
+        setPendingUsers(uRes.data.data.filter(u => !u.isApproved && u.role !== 'admin'))
+      }
     } catch {
       toast.error('Failed to load requests')
     } finally {
@@ -234,6 +242,38 @@ export default function LotAllocatorPage() {
   return (
     <DashboardLayout title="Lot Allocation — DSM">
       <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Director: pending user approvals */}
+        {user?.subRole === 'Director' && pendingUsers.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+            <h3 className="font-semibold text-amber-800 mb-3">
+              Pending Account Approvals
+              <span className="ml-2 bg-amber-200 text-amber-800 text-xs font-medium px-2 py-0.5 rounded-full">{pendingUsers.length}</span>
+            </h3>
+            <div className="space-y-2">
+              {pendingUsers.map(u => (
+                <div key={u._id} className="flex items-center justify-between bg-white rounded-lg px-4 py-2.5 border border-amber-100">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{u.name}</p>
+                    <p className="text-xs text-slate-500">{u.email} · {u.group} — {u.subRole}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const r = await approveUserAccount(u._id)
+                        toast.success(r.data.message)
+                        fetchRequests()
+                      } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+                    }}
+                    className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 transition"
+                  >
+                    <CheckCircle size={13} /> Approve
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <h3 className="font-semibold text-slate-800 mb-4">

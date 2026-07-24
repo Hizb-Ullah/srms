@@ -5,7 +5,7 @@
 // available to every other DSM sub-account").
 const PERMISSIONS = {
   DSM: {
-    Director: ['*'],
+    Director: ['*'],  // includes approve_users
     'Files Controller': ['*'],
     'Lot Allocator': [
       'review_lot_request',

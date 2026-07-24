@@ -99,46 +99,69 @@ const createUser = async (req, res) => {
     const { name, email, password, role, group, subRole, surveyorCode } = req.body
 
     if (!name || !email || !password || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields are required'
-      })
+      return res.status(400).json({ success: false, message: 'All fields are required' })
+    }
+
+    // Max 1 Director and max 1 Secretary allowed
+    const SINGLE_SLOT_ROLES = ['Director', 'Secretary']
+    if (subRole && SINGLE_SLOT_ROLES.includes(subRole)) {
+      const existing = await User.findOne({ group, subRole })
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Only one ${subRole} account is allowed. The existing account must be deleted first.`
+        })
+      }
     }
 
     const userExists = await User.findOne({ email })
     if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'A user with this email already exists'
-      })
+      return res.status(400).json({ success: false, message: 'A user with this email already exists' })
     }
 
     const salt = await bcrypt.genSalt(12)
     const hashedPassword = await bcrypt.hash(password, salt)
 
+    // Admin accounts are auto-approved; all others require Director approval
+    const autoApproved = role === 'admin'
+
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role,
+      name, email, password: hashedPassword, role,
       ...(group && { group }),
       ...(subRole && { subRole }),
-      ...(surveyorCode && { surveyorCode })
+      ...(surveyorCode && { surveyorCode }),
+      isApproved: autoApproved
     })
 
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: autoApproved
+        ? 'User created successfully'
+        : 'User created — pending Director approval before they can log in',
       data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        group: user.group,
-        subRole: user.subRole,
-        surveyorCode: user.surveyorCode
+        id: user._id, name: user.name, email: user.email,
+        role: user.role, group: user.group, subRole: user.subRole,
+        surveyorCode: user.surveyorCode, isApproved: user.isApproved
       }
     })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Director approves a pending user account
+const approveUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+    if (user.isApproved) return res.status(400).json({ success: false, message: 'User is already approved' })
+
+    user.isApproved = true
+    user.approvedBy = req.user.id
+    user.approvedAt = new Date()
+    await user.save()
+
+    res.status(200).json({ success: true, message: `Account approved for ${user.name}` })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
@@ -289,6 +312,7 @@ module.exports = {
   getDashboardStats,
   getAuditLogs,
   createUser,
+  approveUser,
   updateUser,
   deleteUser,
   resetUserPassword,

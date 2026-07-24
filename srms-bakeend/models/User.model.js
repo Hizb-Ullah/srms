@@ -54,6 +54,18 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Account must be approved by Director before user can login
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  approvedAt: {
+    type: Date
+  },
   isLocked: {
     type: Boolean,
     default: false

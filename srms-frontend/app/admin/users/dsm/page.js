@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Modal from '@/components/ui/Modal'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { getAllUsers, createUser, updateUser, deleteUser, toggleUserLock, resetUserPassword } from '@/lib/api'
+import { getAllUsers, createUser, updateUser, deleteUser, toggleUserLock, resetUserPassword, approveUserAccount } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, KeyRound, Copy } from 'lucide-react'
+import { Plus, Pencil, Trash2, KeyRound, Copy, CheckCircle } from 'lucide-react'
 
 const GROUP = 'DSM'
 const SUB_ROLES = [
@@ -18,6 +19,8 @@ const SUB_ROLES = [
   'File Examination',
   'File Approval'
 ]
+// Roles limited to 1 account each
+const SINGLE_SLOT = ['Director', 'Secretary']
 const cls = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
 function generatePassword() {
@@ -25,7 +28,8 @@ function generatePassword() {
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-export default function DsmUsersPage() {
+export default function DsmEmployeesPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers]           = useState([])
   const [loading, setLoading]       = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -37,6 +41,8 @@ export default function DsmUsersPage() {
   const [generatedPw, setGeneratedPw] = useState('')
   const [newPw, setNewPw]           = useState('')
   const [saving, setSaving]         = useState(false)
+
+  const isDirector = currentUser?.group === 'DSM' && currentUser?.subRole === 'Director'
 
   const loadUsers = async () => {
     try {
@@ -59,7 +65,7 @@ export default function DsmUsersPage() {
     e.preventDefault(); setSaving(true)
     try {
       await createUser({ name: form.name, email: form.email, password: generatedPw, role: 'officer', group: GROUP, subRole: form.subRole })
-      toast.success(`User created — password: ${generatedPw}`)
+      toast.success(`User created — pending Director approval. Password: ${generatedPw}`)
       setCreateOpen(false); loadUsers()
     } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
     finally { setSaving(false) }
@@ -98,13 +104,31 @@ export default function DsmUsersPage() {
     catch { toast.error('Failed') }
   }
 
+  const handleApprove = async (id) => {
+    try {
+      const r = await approveUserAccount(id)
+      toast.success(r.data.message); loadUsers()
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to approve') }
+  }
+
+  // Disable "Director" option if one already exists (and we're not editing that user)
+  const getAvailableRoles = (editingUser = null) => {
+    return SUB_ROLES.map(r => {
+      if (SINGLE_SLOT.includes(r)) {
+        const exists = users.find(u => u.subRole === r && u._id !== editingUser?._id)
+        return { value: r, label: r, disabled: !!exists }
+      }
+      return { value: r, label: r, disabled: false }
+    })
+  }
+
   return (
     <DashboardLayout title="DSM Employees">
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-semibold text-slate-800">DSM Employees</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Director · Files Controller · Lot Allocator · File Registration &amp; Reservation · File Capturing · File Examination · File Approval</p>
+            <p className="text-xs text-slate-400 mt-0.5">Director · Files Controller · Lot Allocator · and more</p>
           </div>
           <button onClick={openCreate}
             className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition">
@@ -113,13 +137,15 @@ export default function DsmUsersPage() {
         </div>
 
         {loading ? <TableSkeleton rows={4} /> : users.length === 0 ? (
-          <p className="text-slate-500 text-sm">No DSM users yet.</p>
+          <p className="text-slate-500 text-sm">No DSM employees yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-100">
                 <th className="pb-3">Name</th><th className="pb-3">Email</th>
-                <th className="pb-3">Sub-Role</th><th className="pb-3">Status</th>
+                <th className="pb-3">Sub-Role</th>
+                <th className="pb-3">Approval</th>
+                <th className="pb-3">Status</th>
                 <th className="pb-3">Last login</th><th className="pb-3">Actions</th>
               </tr>
             </thead>
@@ -132,6 +158,21 @@ export default function DsmUsersPage() {
                     <span className="bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded-full">{u.subRole || '—'}</span>
                   </td>
                   <td className="py-3">
+                    {u.isApproved ? (
+                      <span className="text-emerald-600 text-xs font-medium">Approved</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-600 text-xs font-medium">Pending</span>
+                        {isDirector && (
+                          <button onClick={() => handleApprove(u._id)}
+                            className="flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-xs hover:bg-emerald-700 transition">
+                            <CheckCircle size={11} /> Approve
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3">
                     <span className={u.isLocked ? 'text-rose-600 font-medium' : 'text-emerald-600 font-medium'}>
                       {u.isLocked ? 'Locked' : 'Active'}
                     </span>
@@ -139,9 +180,9 @@ export default function DsmUsersPage() {
                   <td className="py-3 text-slate-500">{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</td>
                   <td className="py-3">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => { setSelected(u); setForm({ name: u.name, email: u.email, password: '', subRole: u.subRole || SUB_ROLES[0] }); setEditOpen(true) }}
+                      <button onClick={() => { setSelected(u); setForm({ name: u.name, email: u.email, subRole: u.subRole || SUB_ROLES[0] }); setEditOpen(true) }}
                         className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition"><Pencil size={15} /></button>
-                      <button onClick={() => { setSelected(u); setResetPw(''); setShowPw(false); setResetOpen(true) }}
+                      <button onClick={() => { setSelected(u); setNewPw(''); setResetOpen(true) }}
                         className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-amber-600 transition"><KeyRound size={15} /></button>
                       <button onClick={() => handleLock(u._id)}
                         className={u.isLocked ? 'bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-emerald-100 transition' : 'bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-rose-100 transition'}>
@@ -166,7 +207,11 @@ export default function DsmUsersPage() {
             <input type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} className={cls} /></div>
           <div><label className="block text-sm font-medium text-slate-600 mb-1">Sub-Role</label>
             <select value={form.subRole} onChange={e => setForm({...form, subRole: e.target.value})} className={cls}>
-              {SUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {getAvailableRoles().map(r => (
+                <option key={r.value} value={r.value} disabled={r.disabled}>
+                  {r.label}{r.disabled ? ' (slot taken)' : ''}
+                </option>
+              ))}
             </select></div>
           <div className="bg-slate-50 rounded-lg px-3 py-2.5 flex items-center justify-between">
             <div>
@@ -176,13 +221,15 @@ export default function DsmUsersPage() {
             <button type="button" onClick={() => { navigator.clipboard.writeText(generatedPw); toast.success('Copied') }}
               className="p-1.5 text-slate-400 hover:text-indigo-600 transition"><Copy size={15} /></button>
           </div>
-          <p className="text-xs text-slate-400">Share this password with the user. They can change it after first login.</p>
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+            ⚠ Account will be inactive until the Director approves it.
+          </p>
           <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50">
             {saving ? 'Creating...' : 'Create user'}</button>
         </form>
       </Modal>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit DSM user">
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit DSM Employee">
         <form onSubmit={handleEdit} className="space-y-4">
           <div><label className="block text-sm font-medium text-slate-600 mb-1">Full name</label>
             <input type="text" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={cls} /></div>
@@ -190,7 +237,11 @@ export default function DsmUsersPage() {
             <input type="email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} className={cls} /></div>
           <div><label className="block text-sm font-medium text-slate-600 mb-1">Sub-Role</label>
             <select value={form.subRole} onChange={e => setForm({...form, subRole: e.target.value})} className={cls}>
-              {SUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {getAvailableRoles(selected).map(r => (
+                <option key={r.value} value={r.value} disabled={r.disabled}>
+                  {r.label}{r.disabled ? ' (slot taken)' : ''}
+                </option>
+              ))}
             </select></div>
           <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50">
             {saving ? 'Saving...' : 'Save changes'}</button>

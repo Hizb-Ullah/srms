@@ -70,11 +70,17 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       user.failedLoginAttempts += 1
-      if (user.failedLoginAttempts >= 5) {
-        user.isLocked = true
-      }
+      if (user.failedLoginAttempts >= 5) user.isLocked = true
       await user.save()
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
+    }
+
+    // Block login if account not yet approved by Director
+    if (!user.isApproved && user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending Director approval. Please contact your administrator.'
+      })
     }
     user.failedLoginAttempts = 0
     user.lastLogin = new Date()
