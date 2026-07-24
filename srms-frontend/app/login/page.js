@@ -36,7 +36,7 @@ export default function LoginPage() {
     if (!userType) return toast.error('Please select your user type')
     setLoading(true)
     try {
-      const payload = { email, password }
+      const payload = { email, password, userType }
       if (REQUIRES_CODE.includes(userType)) {
         if (!surveyorCode) return toast.error('Surveyor registration number is required')
         payload.surveyorCode = surveyorCode

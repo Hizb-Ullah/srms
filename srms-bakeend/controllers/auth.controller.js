@@ -50,8 +50,24 @@ const login = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() })
     }
-    const { email, password, surveyorCode } = req.body
+    const { email, password, surveyorCode, userType } = req.body
     const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid credentials' })
+    }
+    // Validate userType matches actual role
+    const roleMap = {
+      admin: ['admin', 'director'],
+      dsm: ['surveyor', 'officer', 'approver'],
+      officer: ['officer'],
+      approver: ['approver'],
+      surveyor: ['surveyor'],
+      private: ['surveyor'],
+      landboard: ['surveyor'],
+    }
+    if (userType && roleMap[userType] && !roleMap[userType].includes(user.role)) {
+      return res.status(400).json({ success: false, message: 'Invalid credentials' })
+    }
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
