@@ -52,6 +52,15 @@ const menuItems = {
   lotAllocator: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox },
+  ],
+  director: [
+    { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
+    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox },
+    { label: 'DSM Employees',  path: '/admin/users/dsm',       icon: Users },
+    { label: 'Private Surveyors', path: '/admin/users/private', icon: Users },
+    { label: 'Land Board Surveyors', path: '/admin/users/landboard', icon: Users },
+    { label: 'All Files',      path: '/admin/files',           icon: FolderOpen },
+    { label: 'Audit Logs',     path: '/admin/audit',           icon: FileBarChart },
   ]
 }
 
@@ -74,7 +83,9 @@ export default function Sidebar() {
 
   if (!user) return null
 
-  const items = user.group === 'DSM'
+  const items = user.group === 'DSM' && user.subRole === 'Director'
+    ? menuItems.director
+    : user.group === 'DSM'
     ? menuItems.lotAllocator
     : (user.group === 'Private' || user.group === 'LandBoard')
       ? menuItems.lotSurveyor
