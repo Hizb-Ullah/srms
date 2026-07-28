@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Modal from '@/components/ui/Modal'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { getAllUsers, createUser, updateUser, deleteUser, toggleUserLock, resetUserPassword } from '@/lib/api'
+import { getAllUsers, createUser, updateUser, deleteUser, toggleUserLock, resetUserPassword, approveUserAccount } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, KeyRound, Copy } from 'lucide-react'
+import { Plus, Pencil, Trash2, KeyRound, Copy, CheckCircle } from 'lucide-react'
 
 const GROUP = 'LandBoard'
 const SUB_ROLES = ['Registered Land Surveyor', 'Assistant Surveyor']
@@ -18,6 +19,7 @@ function generatePassword() {
 }
 
 export default function LandBoardSurveyorsPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers]           = useState([])
   const [loading, setLoading]       = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -90,6 +92,11 @@ export default function LandBoardSurveyorsPage() {
     catch { toast.error('Failed') }
   }
 
+  const handleApprove = async (id) => {
+    try { const r = await approveUserAccount(id); toast.success(r.data.message); loadUsers() }
+    catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+  }
+
   return (
     <DashboardLayout title="Land Board Surveyors">
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
@@ -111,7 +118,7 @@ export default function LandBoardSurveyorsPage() {
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-100">
                 <th className="pb-3">Name</th><th className="pb-3">Email</th>
-                <th className="pb-3">Sub-Role</th><th className="pb-3">Surveyor Reg. No.</th><th className="pb-3">Status</th>
+                <th className="pb-3">Sub-Role</th><th className="pb-3">Surveyor Reg. No.</th><th className="pb-3">Approval</th><th className="pb-3">Status</th>
                 <th className="pb-3">Last login</th><th className="pb-3">Actions</th>
               </tr>
             </thead>
@@ -124,6 +131,21 @@ export default function LandBoardSurveyorsPage() {
                     <span className="bg-amber-50 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">{u.subRole || '—'}</span>
                   </td>
                   <td className="py-3 font-mono text-xs text-slate-600">{u.surveyorCode || '—'}</td>
+                  <td className="py-3">
+                    {u.isApproved ? (
+                      <span className="text-emerald-600 text-xs font-medium">Approved</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-600 text-xs font-medium">Pending</span>
+                        {(currentUser?.role === 'admin' || (currentUser?.group === 'DSM' && currentUser?.subRole === 'Director')) && (
+                          <button onClick={() => handleApprove(u._id)}
+                            className="flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-xs hover:bg-emerald-700 transition">
+                            <CheckCircle size={11} /> Approve
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-3">
                     <span className={u.isLocked ? 'text-rose-600 font-medium' : 'text-emerald-600 font-medium'}>
                       {u.isLocked ? 'Locked' : 'Active'}
@@ -161,8 +183,8 @@ export default function LandBoardSurveyorsPage() {
             <select value={form.subRole} onChange={e => setForm({...form, subRole: e.target.value})} className={cls}>
               {SUB_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
             </select></div>
-          <div><label className="block text-sm font-medium text-slate-600 mb-1">Surveyor Registration Number</label>
-            <input type="number" required min="1" value={form.surveyorCode} onChange={e => setForm({...form, surveyorCode: e.target.value})} placeholder="e.g. 1042" className={cls} /></div>
+          <div><label className="block text-sm font-medium text-slate-600 mb-1">Surveyor Registration Number <span className="text-slate-400 text-xs">(optional — auto-assigned if blank)</span></label>
+            <input type="number" min="1" value={form.surveyorCode} onChange={e => setForm({...form, surveyorCode: e.target.value})} placeholder="Auto-generate" className={cls} /></div>
           <div className="bg-slate-50 rounded-lg px-3 py-2.5 flex items-center justify-between">
             <div>
               <p className="text-xs text-slate-500 mb-0.5">Auto-generated password</p>

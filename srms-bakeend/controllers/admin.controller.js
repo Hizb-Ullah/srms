@@ -125,11 +125,18 @@ const createUser = async (req, res) => {
     // Admin accounts are auto-approved; all others require Director approval
     const autoApproved = role === 'admin'
 
+    // Auto-generate surveyorCode if not provided and group is Private or LandBoard
+    let finalSurveyorCode = surveyorCode
+    if (!finalSurveyorCode && (group === 'Private' || group === 'LandBoard')) {
+      const last = await User.findOne({ surveyorCode: { $exists: true, $ne: null } }).sort({ surveyorCode: -1 })
+      finalSurveyorCode = last ? String(Number(last.surveyorCode) + 1) : '1001'
+    }
+
     const user = await User.create({
       name, email, password: hashedPassword, role,
       ...(group && { group }),
       ...(subRole && { subRole }),
-      ...(surveyorCode && { surveyorCode }),
+      ...(finalSurveyorCode && { surveyorCode: finalSurveyorCode }),
       isApproved: autoApproved
     })
 
