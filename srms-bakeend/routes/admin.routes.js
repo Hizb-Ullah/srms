@@ -29,7 +29,7 @@ router.get('/audit-logs',             authorize('admin', 'director'), getAuditLo
 router.get('/reset-requests',         authorize('admin', 'director'), getResetRequests)
 router.patch('/reset-requests/:id/resolve', authorize('admin', 'director'), resolveResetRequest)
 
-// Admin approves Director accounts
-router.patch('/users/:id/approve',    authorize('admin'), approveUser)
+// Admin or Director approves user accounts
+router.patch('/users/:id/approve',    authorizeCapability('approve_users'), approveUser)
 
 module.exports = router
