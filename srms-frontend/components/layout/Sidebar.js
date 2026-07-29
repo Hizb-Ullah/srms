@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
   CheckCircle, Users, FileBarChart, LogOut, KeyRound, Search, FileText,
-  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare
+  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare, FileCheck, FileSearch
 } from 'lucide-react'
 
 const menuItems = {
@@ -59,7 +59,12 @@ const menuItems = {
   lotAllocator: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
-    { label: 'File Workflow',  path: '/controller',            icon: FolderOpen },
+    { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
+    { label: 'File Registration & Reservation', path: '/controller?section=registration', icon: FolderOpen },
+    { label: 'File Capturing',                  path: '/controller?section=capturing',    icon: FileCheck },
+    { label: 'File Examination',                path: '/controller?section=examination',  icon: FileSearch },
+    { label: 'Approval',                        path: '/controller?section=approval',     icon: CheckCircle },
+    { label: 'Returned to RMU',                 path: '/controller?section=returned',     icon: ClipboardList },
   ],
   rmu: [
     { label: 'RMU Dashboard',           path: '/rmu',                    icon: Home },
@@ -89,7 +94,12 @@ const menuItems = {
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
-    { label: 'File Workflow',  path: '/controller',            icon: FolderOpen },
+    { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
+    { label: 'File Registration & Reservation', path: '/controller?section=registration', icon: FolderOpen },
+    { label: 'File Capturing',                  path: '/controller?section=capturing',    icon: FileCheck },
+    { label: 'File Examination',                path: '/controller?section=examination',  icon: FileSearch },
+    { label: 'Approval',                        path: '/controller?section=approval',     icon: CheckCircle },
+    { label: 'Returned to RMU',                 path: '/controller?section=returned',     icon: ClipboardList },
     { label: 'DSM Employees',  path: '/admin/users/dsm',       icon: Users },
     { label: 'Private Surveyors', path: '/admin/users/private', icon: Users },
     { label: 'Land Board Surveyors', path: '/admin/users/landboard', icon: Users },

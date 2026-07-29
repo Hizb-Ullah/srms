@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import DashboardLayout from '@/app/dashboard-layout'
 import { getControllerFiles, moveControllerStage, returnFileToRmu } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -72,12 +73,15 @@ const RETURNABLE = [
   'received_from_approval'
 ]
 
-export default function ControllerWorkflowPage() {
+function ControllerWorkflowContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const section = searchParams.get('section') || 'unassigned'
+
   const [files, setFiles] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
-  const [section, setSection] = useState('unassigned')
   const [returnFor, setReturnFor] = useState(null)
 
   useEffect(() => { fetchFiles() }, [])
@@ -274,7 +278,7 @@ export default function ControllerWorkflowPage() {
           {cards.map(({ key, label, icon: Icon, color }) => (
             <button
               key={key}
-              onClick={() => setSection(key)}
+              onClick={() => router.push(`/controller?section=${key}`)}
               className={`rounded-xl p-4 flex items-center gap-3 ${color} border-2 text-left transition hover:scale-[1.02] active:scale-[0.98] ${
                 section === key ? 'border-current shadow-md' : 'border-transparent'
               }`}
@@ -293,7 +297,7 @@ export default function ControllerWorkflowPage() {
           {SECTIONS.map(sec => (
             <button
               key={sec.key}
-              onClick={() => setSection(sec.key)}
+              onClick={() => router.push(`/controller?section=${sec.key}`)}
               className={`px-5 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
                 section === sec.key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
@@ -320,5 +324,13 @@ export default function ControllerWorkflowPage() {
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function ControllerWorkflowPage() {
+  return (
+    <Suspense fallback={null}>
+      <ControllerWorkflowContent />
+    </Suspense>
   )
 }
