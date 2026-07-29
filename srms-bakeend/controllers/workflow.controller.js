@@ -2,6 +2,7 @@ const File = require('../models/File.model')
 const logAction = require('../utils/auditLogger')
 const { sendStatusEmail } = require('../utils/emailService')
 const User = require('../models/User.model')
+const { getFileUrl } = require('../utils/fileUrl')
 
 const STAGE_ORDER = [
   'submitted',
@@ -384,7 +385,7 @@ const updateFile = async (req, res) => {
     // Add new documents if uploaded
     if (req.files && req.files.length > 0) {
       const newDocs = req.files.map(f => ({
-        url: f.path,
+        url: getFileUrl(req, f.filename),
         name: f.originalname,
         uploadedAt: new Date()
       }))

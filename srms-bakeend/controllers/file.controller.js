@@ -1,6 +1,7 @@
 const File = require('../models/File.model')
 const PlotNumber = require('../models/PlotNumber.model')
 const logAction = require('../utils/auditLogger')
+const { getFileUrl } = require('../utils/fileUrl')
 
 const submitFile = async (req, res) => {
   try {
@@ -27,7 +28,7 @@ const submitFile = async (req, res) => {
     }
 
     const documents = req.files ? req.files.map(file => ({
-      url: file.path,
+      url: getFileUrl(req, file.filename),
       name: file.originalname,
       uploadedAt: new Date()
     })) : []
@@ -157,7 +158,7 @@ const updateFile = async (req, res) => {
     // Add new documents if uploaded
     if (req.files && req.files.length > 0) {
       const newDocs = req.files.map(f => ({
-        url: f.path,
+        url: getFileUrl(req, f.filename),
         name: f.originalname,
         uploadedAt: new Date()
       }))

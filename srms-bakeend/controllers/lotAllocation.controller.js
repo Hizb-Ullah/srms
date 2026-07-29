@@ -11,6 +11,7 @@ const {
   sendLotAllocatorNotificationEmail,
   sendAccountsOfficeEmail
 } = require('../utils/emailService')
+const { getFileUrl } = require('../utils/fileUrl')
 
 // Client confirmed: multiple-plot requests max out at 5
 const MULTIPLE_PLOT_MAX = parseInt(process.env.MULTIPLE_PLOT_MAX || '5', 10)
@@ -218,7 +219,7 @@ const uploadPop = async (req, res) => {
       return res.status(400).json({ success: false, message: 'POP document is required' })
     }
 
-    request.popDocumentUrl = req.file.path
+    request.popDocumentUrl = getFileUrl(req, req.file.filename)
     request.status = 'pop_uploaded'
     await request.save()
 

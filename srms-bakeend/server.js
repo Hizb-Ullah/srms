@@ -4,6 +4,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 const http = require('http')
+const path = require('path')
 const { Server } = require('socket.io')
 const connectDB = require('./config/db')
 const createDefaultAdmin = require('./utils/createDefaultAdmin')
@@ -54,6 +55,10 @@ const limiter = rateLimit({
 })
 app.use(limiter)
 
+// Uploaded documents (POP, survey files, etc.) — stored locally on disk
+// instead of a third-party service, served back out from here.
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')))
+
 // Routes
 app.use('/api/auth',     require('./routes/auth.routes'))
 app.use('/api/plots',    require('./routes/plot.routes'))
@@ -76,6 +81,17 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: 'Route not found'
+  })
+})
+
+// Global error handler — catches errors thrown in middleware (e.g. multer
+// upload failures) that occur before a route's own try/catch, which
+// otherwise fall through to Express's default plain-text/HTML handler.
+app.use((err, req, res, next) => {
+  console.error(err)
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error'
   })
 })
 

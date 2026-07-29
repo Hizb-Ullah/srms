@@ -44,13 +44,9 @@ export default function LoginPage() {
       login(res.data.token, res.data.user)
       toast.success('Login successful')
 
-      const { role, group } = res.data.user
-      if (role === 'admin') router.push('/admin')
-      else if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/dashboard')
-      else if (group === 'DSM') router.push('/lot-allocator')
-      else if (role === 'surveyor') router.push('/surveyor')
-      else if (role === 'officer') router.push('/officer')
-      else router.push('/approver')
+      // Single source of truth for role/sub-role routing — keeps this in
+      // sync with dashboard-redirect's logic instead of duplicating it here.
+      router.push('/dashboard-redirect')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {
