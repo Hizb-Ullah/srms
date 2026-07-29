@@ -74,6 +74,31 @@ export const approveLotRequest     = (id)         => API.patch(`/lot-requests/${
 export const rejectLotRequest      = (id, data)   => API.patch(`/lot-requests/${id}/reject`, data)
 export const getLastPlotNumber     = (village)    => API.get(`/lot-requests/villages/${village}/last-plot-number`)
 
+// RMU (Records Management Unit)
+export const rmuSearchRecord         = (q)         => API.get('/rmu/search', { params: { q } })
+export const rmuGetRecords           = ()          => API.get('/rmu/records')
+export const rmuGetPendingCollections = ()         => API.get('/rmu/pending-collections')
+export const rmuReceiveRecord        = (id, data)  => API.patch(`/rmu/${id}/receive`, data)
+export const rmuEnterReceipt         = (id, data)  => API.patch(`/rmu/${id}/receipt`, data)
+export const rmuSubmitToController   = (id)        => API.patch(`/rmu/${id}/submit-controller`)
+export const rmuReturnFromController = (id, data)  => API.patch(`/rmu/${id}/return`, data)
+export const rmuMarkCollected        = (id)        => API.patch(`/rmu/${id}/collect`)
+export const rmuSendComment          = (id, data)  => API.patch(`/rmu/${id}/comment`, data)
+export const rmuSendStandaloneComment = (data)     => API.post('/rmu/comments', data)
+export const rmuGetStandaloneComments = ()         => API.get('/rmu/comments')
+export const rmuSendToStorage        = (id)        => API.patch(`/rmu/${id}/storage`)
+
+// Controller workflow
+export const getControllerFiles     = ()          => API.get('/controller/files')
+export const moveControllerStage    = (id, data)  => API.patch(`/controller/${id}/stage`, data)
+export const returnFileToRmu        = (id, data)  => API.patch(`/controller/${id}/return-rmu`, data)
+
+// File sections (Registration & Reservation / Capturing / Examination / Approval)
+export const getSectionQueue        = (section)        => API.get(`/file-sections/${section}/queue`)
+export const getSectionCompleted    = (section)        => API.get(`/file-sections/${section}/completed`)
+export const takeSectionAction      = (section, id, data) => API.patch(`/file-sections/${section}/${id}/action`, data)
+export const sendSectionComment     = (section, id, data) => API.patch(`/file-sections/${section}/${id}/comment`, data)
+
 // Complaints
 export const submitComplaint   = (requestId, data) => API.post(`/complaints/lot-requests/${requestId}`, data)
 export const getMyComplaints   = ()                => API.get('/complaints/my')

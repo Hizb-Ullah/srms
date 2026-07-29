@@ -14,30 +14,8 @@ import {
 import toast from 'react-hot-toast'
 import { MapPin, Upload, ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { VILLAGES, VILLAGE_LOOKUP, LAND_BOARDS } from '@/lib/botswanaData'
 
-// Village → Cadastre mapping (Botswana cadastre areas)
-const VILLAGE_CADASTRE = {
-  'Gaborone': 'CAD-001',
-  'Francistown': 'CAD-002',
-  'Molepolole': 'CAD-003',
-  'Serowe': 'CAD-004',
-  'Maun': 'CAD-005',
-  'Kanye': 'CAD-006',
-  'Mahalapye': 'CAD-007',
-  'Mogoditshane': 'CAD-008',
-  'Mochudi': 'CAD-009',
-  'Lobatse': 'CAD-010',
-  'Palapye': 'CAD-011',
-  'Ramotswa': 'CAD-012',
-  'Tlokweng': 'CAD-013',
-  'Jwaneng': 'CAD-014',
-  'Selebi-Phikwe': 'CAD-015',
-  'Orapa': 'CAD-016',
-  'Letlhakane': 'CAD-017',
-  'Kasane': 'CAD-018',
-  'Ghanzi': 'CAD-019',
-  'Tsabong': 'CAD-020',
-}
 
 const STATUS_LABELS = {
   pending_allocator_review: 'Pending Review',
@@ -66,7 +44,7 @@ export default function LotRequestsPage() {
 
   const [form, setForm] = useState({
     village: '', requestType: 'single_plot', plotCount: 2,
-    parentPlotNumber: '', landBoard: '', cadastreNumber: '', manualPlotStart: ''
+    parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '', manualPlotStart: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -101,8 +79,13 @@ export default function LotRequestsPage() {
 
   // #11 Village → cadastre auto-fill
   const handleVillageChange = async (village) => {
-    const cadastre = VILLAGE_CADASTRE[village] || ''
-    setForm(f => ({ ...f, village, cadastreNumber: cadastre }))
+    const match = VILLAGE_LOOKUP[village] || VILLAGE_LOOKUP[village.trim().toLowerCase()]
+    setForm(f => ({
+      ...f,
+      village,
+      cadastreNumber: match ? match.cadastreAreaId : '',
+      locationType: match ? match.locationType : ''
+    }))
 
     // #12 Plot number rules: check if village has prior requests
     if (village.trim().length > 2) {
@@ -130,7 +113,8 @@ export default function LotRequestsPage() {
         village: form.village,
         requestType: form.requestType,
         landBoard: form.landBoard,
-        cadastreNumber: form.cadastreNumber
+        cadastreNumber: form.cadastreNumber,
+        locationType: form.locationType
       }
       if (form.requestType === 'multiple_plot') payload.plotCount = form.plotCount
       if (form.requestType === 'subdivision') {
@@ -140,7 +124,7 @@ export default function LotRequestsPage() {
       if (isFirstVillage && form.manualPlotStart) payload.manualPlotStart = form.manualPlotStart
       await createLotRequest(payload)
       toast.success('Lot request submitted successfully')
-      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', landBoard: '', cadastreNumber: '', manualPlotStart: '' })
+      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '', manualPlotStart: '' })
       setLastPlot(null)
       setIsFirstVillage(false)
       fetchAll()
@@ -240,7 +224,7 @@ export default function LotRequestsPage() {
                 className={inp}
               />
               <datalist id="village-list">
-                {Object.keys(VILLAGE_CADASTRE).map(v => <option key={v} value={v} />)}
+                {VILLAGES.map(v => <option key={v.name} value={v.name} />)}
               </datalist>
               {form.village.trim().length > 2 && (
                 <p className="text-xs mt-1 text-slate-400">
@@ -253,7 +237,7 @@ export default function LotRequestsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Cadastre Area</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Cadastre Area ID</label>
               <input
                 value={form.cadastreNumber}
                 onChange={(e) => setForm({ ...form, cadastreNumber: e.target.value })}
@@ -261,6 +245,19 @@ export default function LotRequestsPage() {
                 className={`${inp} ${form.cadastreNumber ? 'bg-indigo-50 border-indigo-200' : ''}`}
               />
               {form.cadastreNumber && (
+                <p className="text-xs mt-1 text-indigo-500">✓ Auto-filled from village</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Location Type</label>
+              <input
+                value={form.locationType}
+                onChange={(e) => setForm({ ...form, locationType: e.target.value })}
+                placeholder="Auto-filled when village is selected"
+                className={`${inp} ${form.locationType ? 'bg-indigo-50 border-indigo-200' : ''}`}
+              />
+              {form.locationType && (
                 <p className="text-xs mt-1 text-indigo-500">✓ Auto-filled from village</p>
               )}
             </div>
@@ -310,12 +307,14 @@ export default function LotRequestsPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Land Board</label>
-              <input
+              <select
                 value={form.landBoard}
                 onChange={(e) => setForm({ ...form, landBoard: e.target.value })}
-                placeholder="e.g. Gaborone Land Board"
                 className={inp}
-              />
+              >
+                <option value="">— Select a Land Board —</option>
+                {LAND_BOARDS.map(lb => <option key={lb} value={lb}>{lb}</option>)}
+              </select>
             </div>
 
             {isFirstVillage && (
@@ -413,6 +412,28 @@ export default function LotRequestsPage() {
 
                         {req.requestType === 'subdivision' && req.parentPlotNumber && (
                           <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
+                        )}
+
+                        {req.rmuComments?.length > 0 && (
+                          <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-xs space-y-1">
+                            <p className="font-medium text-orange-700">Comments from RMU</p>
+                            {req.rmuComments.map((c, i) => (
+                              <p key={i} className="text-slate-600">
+                                {c.message} <span className="text-slate-400">· {new Date(c.sentAt).toLocaleDateString()}</span>
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        {req.controllerComments?.length > 0 && (
+                          <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-xs space-y-1">
+                            <p className="font-medium text-orange-700">Comments from File Workflow</p>
+                            {req.controllerComments.map((c, i) => (
+                              <p key={i} className="text-slate-600">
+                                <span className="capitalize font-medium">{c.stage}</span>: {c.message} <span className="text-slate-400">· {new Date(c.sentAt).toLocaleDateString()}</span>
+                              </p>
+                            ))}
+                          </div>
                         )}
 
                         {req.rejectionReason && (

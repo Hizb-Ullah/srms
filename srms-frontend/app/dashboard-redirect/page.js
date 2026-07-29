@@ -11,7 +11,15 @@ export default function DashboardRedirect() {
   useEffect(() => {
     if (!loading) {
       if (user) {
+        const SUB_ROLE_PATHS = {
+          RMU: '/rmu',
+          'File Registration and Reservation': '/registration',
+          'File Capturing': '/capturing',
+          'File Examination': '/examination',
+          'File Approval': '/approval'
+        }
         if (user.group === 'Private' || user.group === 'LandBoard') router.push('/surveyor/dashboard')
+        else if (user.group === 'DSM' && SUB_ROLE_PATHS[user.subRole]) router.push(SUB_ROLE_PATHS[user.subRole])
         else if (user.group === 'DSM') router.push('/lot-allocator')
         else router.push(`/${user.role}`)
       } else {

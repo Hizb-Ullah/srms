@@ -22,7 +22,7 @@ export default function AdminUsersPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
 
-  const DSM_SUBROLES = ['Director','Files Controller','Lot Allocator','File Registration and Reservation','File Capturing','File Examination','File Approval']
+  const DSM_SUBROLES = ['Director','Files Controller','Lot Allocator','File Registration and Reservation','File Capturing','File Examination','File Approval','RMU']
   const SURVEYOR_SUBROLES = ['Registered Land Surveyor','Assistant Surveyor']
 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'surveyor', group: '', subRole: '' })

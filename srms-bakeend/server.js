@@ -62,6 +62,9 @@ app.use('/api/workflow', require('./routes/workflow.routes'))
 app.use('/api/admin',    require('./routes/admin.routes'))
 app.use('/api/lot-requests', require('./routes/lotAllocation.routes'))
 app.use('/api/complaints', require('./routes/complaint.routes'))
+app.use('/api/rmu',      require('./routes/rmu.routes'))
+app.use('/api/controller', require('./routes/controllerWorkflow.routes'))
+app.use('/api/file-sections', require('./routes/fileSection.routes'))
 
 // Test route
 app.get('/', (req, res) => {

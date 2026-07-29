@@ -19,7 +19,7 @@ const MULTIPLE_PLOT_MAX = parseInt(process.env.MULTIPLE_PLOT_MAX || '5', 10)
 // plot numbers, SR#, DSM#, OS# are all auto-assigned here.
 const createLotRequest = async (req, res) => {
   try {
-    const { village, requestType, parentPlotNumber, landBoard, cadastreNumber } = req.body
+    const { village, requestType, parentPlotNumber, landBoard, cadastreNumber, locationType } = req.body
 
     if (!village || !requestType) {
       return res.status(400).json({ success: false, message: 'Village and request type are required' })
@@ -93,6 +93,7 @@ const createLotRequest = async (req, res) => {
       group: req.user.group,
       village,
       landBoard: landBoard || '',
+      locationType: locationType || '',
       requestType,
       surveyorCode: req.user.surveyorCode || '',
       plots,

@@ -59,10 +59,37 @@ const menuItems = {
   lotAllocator: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
+    { label: 'File Workflow',  path: '/controller',            icon: FolderOpen },
+  ],
+  rmu: [
+    { label: 'RMU Dashboard',           path: '/rmu',                    icon: Home },
+    { label: 'New Arrival Files',       path: '/rmu?tab=arrivals',       icon: Inbox },
+    { label: 'Sent to Controller',      path: '/rmu?tab=controller',     icon: FolderOpen },
+    { label: 'Returned from Controller', path: '/rmu?tab=returned',      icon: ClipboardList },
+    { label: 'Check File Status',       path: '/rmu?tab=status',         icon: Search },
+    { label: 'Send Surveyor Comment',   path: '/rmu?tab=comments',       icon: MessageSquare },
+    { label: 'Storage',                 path: '/rmu?tab=storage',        icon: FolderOpen },
+  ],
+  registration: [
+    { label: 'Registration & Reservation', path: '/registration', icon: Home },
+    { label: 'Search',                     path: '/search',       icon: Search },
+  ],
+  capturing: [
+    { label: 'File Capturing', path: '/capturing', icon: Home },
+    { label: 'Search',         path: '/search',    icon: Search },
+  ],
+  examination: [
+    { label: 'File Examination', path: '/examination', icon: Home },
+    { label: 'Search',           path: '/search',       icon: Search },
+  ],
+  approval: [
+    { label: 'File Approval', path: '/approval', icon: Home },
+    { label: 'Search',        path: '/search',   icon: Search },
   ],
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
+    { label: 'File Workflow',  path: '/controller',            icon: FolderOpen },
     { label: 'DSM Employees',  path: '/admin/users/dsm',       icon: Users },
     { label: 'Private Surveyors', path: '/admin/users/private', icon: Users },
     { label: 'Land Board Surveyors', path: '/admin/users/landboard', icon: Users },
@@ -111,8 +138,18 @@ export default function Sidebar() {
 
   if (!user) return null
 
+  const DSM_SUB_ROLE_MENUS = {
+    RMU: menuItems.rmu,
+    'File Registration and Reservation': menuItems.registration,
+    'File Capturing': menuItems.capturing,
+    'File Examination': menuItems.examination,
+    'File Approval': menuItems.approval
+  }
+
   const items = user.group === 'DSM' && user.subRole === 'Director'
     ? menuItems.director
+    : user.group === 'DSM' && DSM_SUB_ROLE_MENUS[user.subRole]
+    ? DSM_SUB_ROLE_MENUS[user.subRole]
     : user.group === 'DSM'
     ? menuItems.lotAllocator
     : (user.group === 'Private' || user.group === 'LandBoard')
