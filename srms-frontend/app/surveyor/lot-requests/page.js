@@ -62,6 +62,7 @@ export default function LotRequestsPage() {
   const [complaints, setComplaints] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
+  const [activeTab, setActiveTab] = useState('new')
 
   const [form, setForm] = useState({
     village: '', requestType: 'single_plot', plotCount: 2,
@@ -186,8 +187,37 @@ export default function LotRequestsPage() {
     <DashboardLayout title="Lot Allocation Requests">
       <div className="space-y-6">
 
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab('new')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition ${
+              activeTab === 'new'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            New Request
+          </button>
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'my'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            My Requests
+            {requests.length > 0 && (
+              <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                {requests.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Submit new request */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        {activeTab === 'new' && <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center gap-2 mb-5">
             <MapPin size={20} className="text-indigo-600" />
             <h2 className="font-semibold text-slate-800">New Lot Number Request</h2>
@@ -293,10 +323,10 @@ export default function LotRequestsPage() {
               </button>
             </div>
           </form>
-        </div>
+        </div>}
 
         {/* My requests list */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        {activeTab === 'my' && <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <h3 className="font-semibold text-slate-800 mb-4">My Lot Requests</h3>
 
           {fetching ? (
@@ -420,7 +450,7 @@ export default function LotRequestsPage() {
               })}
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* #9 Complaint modal */}

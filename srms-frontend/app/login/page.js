@@ -15,7 +15,6 @@ const USER_TYPES = [
   { value: 'landboard', label: 'Land Board Surveyor' },
   { value: 'officer', label: 'Officer' },
   { value: 'approver', label: 'Approver' },
-  { value: 'surveyor', label: 'Surveyor' },
 ]
 
 // User types that require a surveyor registration number

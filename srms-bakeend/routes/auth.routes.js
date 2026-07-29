@@ -26,25 +26,6 @@ const loginValidation = [
     .notEmpty().withMessage('Password is required')
 ]
 
-// Temporary debug — check user by email (remove after debugging)
-router.get('/debug-user/:email', async (req, res) => {
-  try {
-    const User = require('../models/User.model')
-    const user = await User.findOne({ email: req.params.email }).select('-password')
-    if (!user) return res.json({ found: false })
-    res.json({
-      found: true,
-      role: user.role,
-      group: user.group,
-      subRole: user.subRole,
-      surveyorCode: user.surveyorCode,
-      isApproved: user.isApproved,
-      isLocked: user.isLocked,
-      failedLoginAttempts: user.failedLoginAttempts
-    })
-  } catch (e) { res.json({ error: e.message }) }
-})
-
 router.post('/register', (req, res) => {
   res.status(403).json({
     success: false,
