@@ -73,9 +73,9 @@ app.get('/', (req, res) => {
 
 // Handle unknown routes
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     success: false,
-    message: 'Route not found' 
+    message: 'Route not found'
   })
 })
 
