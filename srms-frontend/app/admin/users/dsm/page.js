@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
 import Modal from '@/components/ui/Modal'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { getAllUsers, createUser, updateUser, deleteUser, toggleUserLock, resetUserPassword, approveUserAccount } from '@/lib/api'
+import { getAllUsers, createUser, updateUser, requestDeleteUser, confirmDeleteUser, cancelDeleteUser, toggleUserLock, resetUserPassword, approveUserAccount } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
-import { Plus, Pencil, Trash2, KeyRound, Copy, CheckCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, KeyRound, Copy, CheckCircle, AlertTriangle } from 'lucide-react'
 
 const GROUP = 'DSM'
 const SUB_ROLES = [
@@ -36,6 +36,7 @@ export default function DsmEmployeesPage() {
   const [editOpen, setEditOpen]     = useState(false)
   const [resetOpen, setResetOpen]   = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
   const [selected, setSelected]     = useState(null)
   const [form, setForm]             = useState({ name: '', email: '', subRole: SUB_ROLES[0] })
   const [generatedPw, setGeneratedPw] = useState('')
@@ -91,12 +92,30 @@ export default function DsmEmployeesPage() {
     finally { setSaving(false) }
   }
 
-  const handleDelete = async () => {
+  const handleRequestDelete = async () => {
+    if (!deleteReason.trim()) return toast.error('Delete reason is required')
     setSaving(true)
     try {
-      await deleteUser(selected._id); toast.success('Deleted'); setDeleteOpen(false); loadUsers()
+      const r = await requestDeleteUser(selected._id, { reason: deleteReason })
+      toast.success(r.data.message); setDeleteOpen(false); setDeleteReason(''); loadUsers()
     } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
     finally { setSaving(false) }
+  }
+
+  const handleConfirmDelete = async (id) => {
+    setSaving(true)
+    try {
+      const r = await confirmDeleteUser(id)
+      toast.success(r.data.message); loadUsers()
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
+    finally { setSaving(false) }
+  }
+
+  const handleCancelDelete = async (id) => {
+    try {
+      const r = await cancelDeleteUser(id)
+      toast.success(r.data.message); loadUsers()
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
   }
 
   const handleLock = async (id) => {
@@ -188,8 +207,17 @@ export default function DsmEmployeesPage() {
                         className={u.isLocked ? 'bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-emerald-100 transition' : 'bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-rose-100 transition'}>
                         {u.isLocked ? 'Unlock' : 'Lock'}
                       </button>
-                      <button onClick={() => { setSelected(u); setDeleteOpen(true) }}
-                        className="p-1.5 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition"><Trash2 size={15} /></button>
+                      {u.pendingDelete ? (
+                        <>
+                          <button onClick={() => handleConfirmDelete(u._id)} disabled={saving}
+                            className="bg-rose-600 text-white px-2 py-1 rounded text-xs hover:bg-rose-700 transition">Confirm Delete</button>
+                          <button onClick={() => handleCancelDelete(u._id)}
+                            className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs hover:bg-slate-200 transition">Cancel</button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setSelected(u); setDeleteReason(''); setDeleteOpen(true) }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition"><Trash2 size={15} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -258,12 +286,17 @@ export default function DsmEmployeesPage() {
         </form>
       </Modal>
 
-      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete user">
-        <p className="text-sm text-slate-600 mb-5">Delete <strong>{selected?.name}</strong>? This cannot be undone.</p>
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Request Delete">
+        <p className="text-sm text-slate-600 mb-3">Request deletion of <strong>{selected?.name}</strong>. The other party must confirm.</p>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-600 mb-1">Reason for deletion <span className="text-rose-500">*</span></label>
+          <textarea rows={3} value={deleteReason} onChange={e => setDeleteReason(e.target.value)}
+            placeholder="Enter reason..." className={cls} />
+        </div>
         <div className="flex gap-3">
           <button onClick={() => setDeleteOpen(false)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-lg font-medium hover:bg-slate-50 transition">Cancel</button>
-          <button onClick={handleDelete} disabled={saving} className="flex-1 bg-rose-600 text-white py-2.5 rounded-lg font-medium hover:bg-rose-700 active:scale-[0.98] transition disabled:opacity-50">
-            {saving ? 'Deleting...' : 'Delete'}</button>
+          <button onClick={handleRequestDelete} disabled={saving} className="flex-1 bg-rose-600 text-white py-2.5 rounded-lg font-medium hover:bg-rose-700 active:scale-[0.98] transition disabled:opacity-50">
+            {saving ? 'Submitting...' : 'Submit Request'}</button>
         </div>
       </Modal>
     </DashboardLayout>

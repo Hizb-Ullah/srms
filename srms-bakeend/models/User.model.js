@@ -76,6 +76,17 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: {
     type: Date
+  },
+  pendingDelete: {
+    type: Boolean,
+    default: false
+  },
+  deleteRequestedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deleteReason: {
+    type: String
   }
 }, { timestamps: true })
 

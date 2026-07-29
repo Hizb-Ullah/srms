@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
+import { getAllUsers, getAllComplaints } from '@/lib/api'
 import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
   CheckCircle, Users, FileBarChart, LogOut, KeyRound, Search, FileText,
-  MapPin, Inbox, ChevronDown, ChevronRight
+  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare
 } from 'lucide-react'
 
 const menuItems = {
@@ -33,7 +34,7 @@ const menuItems = {
   ],
   admin: [
     { label: 'Dashboard',      path: '/admin',                    icon: Home },
-    { label: 'Users',          path: null,                        icon: Users, children: [
+    { label: 'Users',          path: null,                        icon: Users, badge: true, children: [
       { label: 'DSM Employees',        path: '/admin/users/dsm' },
       { label: 'Private Surveyors',    path: '/admin/users/private' },
       { label: 'Land Board Surveyors', path: '/admin/users/landboard' },
@@ -46,16 +47,17 @@ const menuItems = {
   ],
   // Group-based menus (Private / LandBoard surveyors)
   lotSurveyor: [
+    { label: 'Dashboard',      path: '/surveyor/dashboard', icon: Home },
     { label: 'Lot Requests',   path: '/surveyor/lot-requests', icon: MapPin },
   ],
   // DSM group (Lot Allocator / Director / Files Controller)
   lotAllocator: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
-    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox },
+    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
   ],
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
-    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox },
+    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
     { label: 'DSM Employees',  path: '/admin/users/dsm',       icon: Users },
     { label: 'Private Surveyors', path: '/admin/users/private', icon: Users },
     { label: 'Land Board Surveyors', path: '/admin/users/landboard', icon: Users },
@@ -69,6 +71,22 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const [openGroup, setOpenGroup] = useState(null)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [openComplaints, setOpenComplaints] = useState(0)
+
+  useEffect(() => {
+    if (user?.role === 'admin' || (user?.group === 'DSM' && user?.subRole === 'Director')) {
+      getAllUsers().then(res => {
+        const pending = res.data.data.filter(u => !u.isApproved || u.pendingDelete).length
+        setPendingCount(pending)
+      }).catch(() => {})
+    }
+    if (user?.group === 'DSM') {
+      getAllComplaints().then(res => {
+        setOpenComplaints(res.data.data.filter(c => c.status === 'open').length)
+      }).catch(() => {})
+    }
+  }, [user])
 
   // Auto-open Users group if on a users sub-page
   useEffect(() => {
@@ -124,6 +142,9 @@ export default function Sidebar() {
                 >
                   <Icon size={18} />
                   <span className="flex-1">{item.label}</span>
+                  {item.badge && pendingCount > 0 && (
+                    <span className="bg-rose-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{pendingCount}</span>
+                  )}
                   {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
                 {isOpen && (
@@ -159,6 +180,9 @@ export default function Sidebar() {
             >
               <Icon size={18} />
               {item.label}
+              {item.complaintBadge && openComplaints > 0 && (
+                <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{openComplaints}</span>
+              )}
             </button>
           )
         })}

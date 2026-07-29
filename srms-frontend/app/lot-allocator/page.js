@@ -10,10 +10,13 @@ import {
   approveLotRequest,
   rejectLotRequest,
   getAllUsers,
-  approveUserAccount
+  approveUserAccount,
+  getDirectorStats,
+  getAllComplaints,
+  resolveComplaint
 } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, CreditCard, ClipboardCheck } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, CreditCard, ClipboardCheck, MapPin, FolderOpen, AlertTriangle, FileCheck, FileSearch, Send, Inbox, MessageSquare } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const STATUS_LABELS = {
@@ -34,10 +37,50 @@ const STATUS_COLOR = {
   rejected: 'bg-rose-50 text-rose-700'
 }
 
+function ResolveComplaintInline({ id, onDone }) {
+  const [res, setRes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  const handle = async () => {
+    setSaving(true)
+    try {
+      await resolveComplaint(id, { resolution: res })
+      toast.success('Complaint resolved')
+      onDone()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)}
+      className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition shrink-0">
+      Resolve
+    </button>
+  )
+
+  return (
+    <div className="flex gap-2 shrink-0">
+      <input value={res} onChange={e => setRes(e.target.value)}
+        placeholder="Resolution note (optional)"
+        className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 w-40" />
+      <button onClick={handle} disabled={saving}
+        className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+        {saving ? '...' : 'Save'}
+      </button>
+    </div>
+  )
+}
+
 export default function LotAllocatorPage() {
   const { user } = useAuth()
   const [requests, setRequests] = useState([])
   const [pendingUsers, setPendingUsers] = useState([])
+  const [directorStats, setDirectorStats] = useState(null)
+  const [complaints, setComplaints] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -50,10 +93,13 @@ export default function LotAllocatorPage() {
     try {
       const res = await getAllLotRequests()
       setRequests(res.data.data)
-      // Director sees pending user approvals
+      const cRes = await getAllComplaints()
+      setComplaints(cRes.data.data)
       if (user?.subRole === 'Director') {
         const uRes = await getAllUsers()
         setPendingUsers(uRes.data.data.filter(u => !u.isApproved && u.role !== 'admin'))
+        const sRes = await getDirectorStats()
+        setDirectorStats(sRes.data.data)
       }
     } catch {
       toast.error('Failed to load requests')
@@ -240,8 +286,31 @@ export default function LotAllocatorPage() {
   )
 
   return (
-    <DashboardLayout title="Lot Allocation — DSM">
+    <DashboardLayout title="DSM — Director Dashboard">
       <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Director: workflow stats */}
+        {user?.subRole === 'Director' && directorStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[
+              { label: 'Pending Lot Allocations', value: directorStats.pendingLots,  icon: MapPin,       color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { label: 'Files with Controller',   value: directorStats.capturing,    icon: FolderOpen,   color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+              { label: 'Files on RTS',            value: directorStats.rework,       icon: AlertTriangle,color: 'bg-rose-50 text-rose-700 border-rose-200' },
+              { label: 'Registration & Reservation', value: directorStats.registration, icon: Inbox,     color: 'bg-sky-50 text-sky-700 border-sky-200' },
+              { label: 'Files in Capturing',      value: directorStats.capturing,    icon: FileCheck,    color: 'bg-violet-50 text-violet-700 border-violet-200' },
+              { label: 'Files in Examination',    value: directorStats.examination,  icon: FileSearch,   color: 'bg-teal-50 text-teal-700 border-teal-200' },
+              { label: 'Files in Approval',       value: directorStats.approval,     icon: Send,         color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className={`border rounded-xl p-4 flex items-center gap-3 ${color}`}>
+                <Icon size={20} />
+                <div>
+                  <p className="text-xs font-medium opacity-80">{label}</p>
+                  <p className="text-2xl font-bold">{value ?? '—'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Director: pending user approvals */}
         {user?.subRole === 'Director' && pendingUsers.length > 0 && (
@@ -298,6 +367,43 @@ export default function LotAllocatorPage() {
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
             <h3 className="font-semibold text-slate-800 mb-4">Closed Requests</h3>
             <div className="space-y-3">{closed.map(renderRequest)}</div>
+          </div>
+        )}
+
+        {/* Complaints panel */}
+        {complaints.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <MessageSquare size={18} className="text-orange-500" />
+              Surveyor Complaints
+              {complaints.filter(c => c.status === 'open').length > 0 && (
+                <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {complaints.filter(c => c.status === 'open').length} open
+                </span>
+              )}
+            </h3>
+            <div className="space-y-3">
+              {complaints.map(c => (
+                <div key={c._id} className={`border rounded-xl p-4 ${
+                  c.status === 'open' ? 'border-orange-200 bg-orange-50' : 'border-slate-100'
+                }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-800">{c.submittedBy?.name}</p>
+                      <p className="text-xs text-slate-500">{c.submittedBy?.surveyorCode} · {c.requestId?.village} ({c.requestId?.status?.replace(/_/g,' ')})</p>
+                      <p className="text-sm text-slate-700 mt-1">{c.message}</p>
+                      {c.resolution && <p className="text-xs text-emerald-700 mt-1">Resolution: {c.resolution}</p>}
+                    </div>
+                    {c.status === 'open' && (
+                      <ResolveComplaintInline id={c._id} onDone={fetchRequests} />
+                    )}
+                    {c.status === 'resolved' && (
+                      <span className="text-xs text-emerald-600 font-medium shrink-0">Resolved</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

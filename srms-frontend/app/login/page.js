@@ -47,11 +47,11 @@ export default function LoginPage() {
 
       const { role, group } = res.data.user
       if (role === 'admin') router.push('/admin')
-      else if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/lot-requests')
+      else if (group === 'Private' || group === 'LandBoard') router.push('/surveyor/dashboard')
       else if (group === 'DSM') router.push('/lot-allocator')
       else if (role === 'surveyor') router.push('/surveyor')
       else if (role === 'officer') router.push('/officer')
-      else if (role === 'approver') router.push('/approver')
+      else router.push('/approver')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {
@@ -136,11 +136,11 @@ export default function LoginPage() {
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Surveyor Registration Number</label>
               <input
-                type="number"
+                type="text"
                 value={surveyorCode}
                 onChange={e => setSurveyorCode(e.target.value)}
                 required
-                placeholder="Enter your registration number"
+                placeholder="e.g. 05/2020"
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
               />
             </div>

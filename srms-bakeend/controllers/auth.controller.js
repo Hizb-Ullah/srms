@@ -74,6 +74,12 @@ const login = async (req, res) => {
         message: 'Account locked due to too many failed attempts. Contact admin.'
       })
     }
+    if (!user.isApproved) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval. Please contact the Director or Admin.'
+      })
+    }
     // If user has a surveyorCode, it must be provided and must match
     if (user.surveyorCode) {
       if (!surveyorCode || String(surveyorCode).trim() !== String(user.surveyorCode).trim()) {

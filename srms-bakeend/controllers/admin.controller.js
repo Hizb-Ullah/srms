@@ -5,6 +5,8 @@ const AuditLog = require('../models/AuditLog.model')
 const bcrypt = require('bcryptjs')
 const ResetRequest = require('../models/ResetRequest.model')
 
+const LotAllocationRequest = require('../models/LotAllocationRequest.model')
+
 // Get all users
 const getAllUsers = async (req, res) => {
   try {
@@ -125,18 +127,11 @@ const createUser = async (req, res) => {
     // Admin accounts are auto-approved; all others require Director approval
     const autoApproved = role === 'admin'
 
-    // Auto-generate surveyorCode if not provided and group is Private or LandBoard
-    let finalSurveyorCode = surveyorCode
-    if (!finalSurveyorCode && (group === 'Private' || group === 'LandBoard')) {
-      const last = await User.findOne({ surveyorCode: { $exists: true, $ne: null } }).sort({ surveyorCode: -1 })
-      finalSurveyorCode = last ? String(Number(last.surveyorCode) + 1) : '1001'
-    }
-
     const user = await User.create({
       name, email, password: hashedPassword, role,
       ...(group && { group }),
       ...(subRole && { subRole }),
-      ...(finalSurveyorCode && { surveyorCode: finalSurveyorCode }),
+      ...(surveyorCode && { surveyorCode }),
       isApproved: autoApproved
     })
 
@@ -217,6 +212,66 @@ const updateUser = async (req, res) => {
         surveyorCode: user.surveyorCode
       }
     })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Request delete (marks as pending, other party confirms)
+const requestDeleteUser = async (req, res) => {
+  try {
+    const { reason } = req.body
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ success: false, message: 'Delete reason is required' })
+    }
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+    if (user.role === 'admin') return res.status(400).json({ success: false, message: 'Cannot delete admin account' })
+    if (user.pendingDelete) return res.status(400).json({ success: false, message: 'Delete already pending approval' })
+
+    user.pendingDelete = true
+    user.deleteRequestedBy = req.user._id
+    user.deleteReason = reason.trim()
+    await user.save()
+
+    res.status(200).json({ success: true, message: 'Delete request submitted — awaiting approval' })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Confirm delete (the other party approves)
+const confirmDeleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+    if (!user.pendingDelete) return res.status(400).json({ success: false, message: 'No pending delete request' })
+
+    const requester = user.deleteRequestedBy?.toString()
+    const confirmer = req.user._id.toString()
+
+    // Same person cannot confirm their own delete request
+    if (requester === confirmer) {
+      return res.status(403).json({ success: false, message: 'You cannot confirm your own delete request' })
+    }
+
+    await user.deleteOne()
+    res.status(200).json({ success: true, message: `User deleted successfully` })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Cancel delete request
+const cancelDeleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+    user.pendingDelete = false
+    user.deleteRequestedBy = undefined
+    user.deleteReason = undefined
+    await user.save()
+    res.status(200).json({ success: true, message: 'Delete request cancelled' })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
@@ -313,6 +368,22 @@ const resolveResetRequest = async (req, res) => {
   }
 }
 
+const getDirectorStats = async (req, res) => {
+  try {
+    const [pendingLots, capturing, rework, registration, examination, approval] = await Promise.all([
+      LotAllocationRequest.countDocuments({ status: 'pending_allocator_review' }),
+      File.countDocuments({ currentStage: 'capturing' }),
+      File.countDocuments({ status: 'rework' }),
+      File.countDocuments({ currentStage: 'submitted' }),
+      File.countDocuments({ currentStage: 'examination' }),
+      File.countDocuments({ currentStage: 'approval' }),
+    ])
+    res.status(200).json({ success: true, data: { pendingLots, capturing, rework, registration, examination, approval } })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
 module.exports = {
   getAllUsers,
   toggleUserLock,
@@ -324,5 +395,9 @@ module.exports = {
   deleteUser,
   resetUserPassword,
   getResetRequests,
-  resolveResetRequest
+  resolveResetRequest,
+  getDirectorStats,
+  requestDeleteUser,
+  confirmDeleteUser,
+  cancelDeleteUser
 }

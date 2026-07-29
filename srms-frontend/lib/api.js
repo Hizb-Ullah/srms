@@ -51,6 +51,9 @@ export const getAllUsers        = ()           => API.get('/admin/users')
 export const createUser        = (data)       => API.post('/admin/users', data)
 export const updateUser        = (id, data)   => API.put(`/admin/users/${id}`, data)
 export const deleteUser        = (id)         => API.delete(`/admin/users/${id}`)
+export const requestDeleteUser = (id, data)   => API.post(`/admin/users/${id}/request-delete`, data)
+export const confirmDeleteUser = (id)         => API.post(`/admin/users/${id}/confirm-delete`)
+export const cancelDeleteUser  = (id)         => API.post(`/admin/users/${id}/cancel-delete`)
 export const toggleUserLock    = (id)         => API.patch(`/admin/users/${id}/lock`)
 export const resetUserPassword = (id, data)   => API.patch(`/admin/users/${id}/reset-password`, data)
 export const approveUserAccount = (id)        => API.patch(`/admin/users/${id}/approve`)
@@ -58,6 +61,7 @@ export const getDashboard      = ()           => API.get('/admin/dashboard')
 export const getAuditLogs      = ()           => API.get('/admin/audit-logs')
 export const getResetRequests  = ()           => API.get('/admin/reset-requests')
 export const resolveResetRequest = (id)       => API.patch(`/admin/reset-requests/${id}/resolve`)
+export const getDirectorStats  = ()           => API.get('/admin/director-stats')
 
 // Lot Allocation
 export const createLotRequest      = (data)       => API.post('/lot-requests', data)
@@ -69,5 +73,11 @@ export const markPaymentReceived   = (id)         => API.patch(`/lot-requests/${
 export const approveLotRequest     = (id)         => API.patch(`/lot-requests/${id}/approve`)
 export const rejectLotRequest      = (id, data)   => API.patch(`/lot-requests/${id}/reject`, data)
 export const getLastPlotNumber     = (village)    => API.get(`/lot-requests/villages/${village}/last-plot-number`)
+
+// Complaints
+export const submitComplaint   = (requestId, data) => API.post(`/complaints/lot-requests/${requestId}`, data)
+export const getMyComplaints   = ()                => API.get('/complaints/my')
+export const getAllComplaints  = ()                => API.get('/complaints')
+export const resolveComplaint  = (id, data)        => API.patch(`/complaints/${id}/resolve`, data)
 
 export default API

@@ -11,7 +11,11 @@ const {
   deleteUser,
   resetUserPassword,
   getResetRequests,
-  resolveResetRequest
+  resolveResetRequest,
+  getDirectorStats,
+  requestDeleteUser,
+  confirmDeleteUser,
+  cancelDeleteUser
 } = require('../controllers/admin.controller')
 const { protect, authorize, authorizeCapability } = require('../middleware/auth.middleware')
 
@@ -29,6 +33,9 @@ router.get('/users',                  isAdminOrDirector, getAllUsers)
 router.post('/users',                 isAdminOrDirector, createUser)
 router.put('/users/:id',              isAdminOrDirector, updateUser)
 router.delete('/users/:id',           isAdminOrDirector, deleteUser)
+router.post('/users/:id/request-delete',  isAdminOrDirector, requestDeleteUser)
+router.post('/users/:id/confirm-delete',  isAdminOrDirector, confirmDeleteUser)
+router.post('/users/:id/cancel-delete',   isAdminOrDirector, cancelDeleteUser)
 router.patch('/users/:id/lock',       isAdminOrDirector, toggleUserLock)
 router.patch('/users/:id/reset-password', isAdminOrDirector, resetUserPassword)
 router.get('/dashboard',              isAdminOrDirector, getDashboardStats)
@@ -36,7 +43,9 @@ router.get('/audit-logs',             isAdminOrDirector, getAuditLogs)
 router.get('/reset-requests',         isAdminOrDirector, getResetRequests)
 router.patch('/reset-requests/:id/resolve', isAdminOrDirector, resolveResetRequest)
 
-// Approve user accounts
-router.patch('/users/:id/approve',    isAdminOrDirector, approveUser)
+router.get('/director-stats',          isAdminOrDirector, getDirectorStats)
+
+// Admin or Director can approve user accounts
+router.patch('/users/:id/approve', isAdminOrDirector, approveUser)
 
 module.exports = router
