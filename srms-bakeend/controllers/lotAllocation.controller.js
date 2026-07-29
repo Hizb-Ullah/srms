@@ -52,10 +52,30 @@ const createLotRequest = async (req, res) => {
       }
     }
 
-    // Auto-assign plot numbers (village-scoped sequence), plus SR#, DSM#, OS#
-    // for each individual plot — DSM# and OS# are always generated per-plot,
-    // never shared/inherited, per client confirmation.
-    const plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
+    // Check if this is the first-ever request for this village
+    const existingForVillage = await LotAllocationRequest.findOne({ village })
+    const isFirstForVillage = !existingForVillage
+
+    // If first time for this village, allocator can pass manualPlotStart
+    // (sent from frontend when reviewing). For subsequent requests, auto-generate.
+    let plotNumbers
+    if (isFirstForVillage && req.body.manualPlotStart) {
+      const startNum = parseInt(req.body.manualPlotStart, 10)
+      if (isNaN(startNum) || startNum < 1) {
+        return res.status(400).json({ success: false, message: 'Invalid manual plot start number' })
+      }
+      // Seed the counter to startNum - 1 so next auto-generate continues from startNum
+      const Counter = require('../models/Counter.model')
+      const counterKey = `plot-${village.trim().toLowerCase().replace(/\s+/g, '-')}`
+      await Counter.findOneAndUpdate(
+        { key: counterKey },
+        { $set: { seq: startNum - 1 } },
+        { upsert: true }
+      )
+      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
+    } else {
+      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
+    }
     const srNumbers = await generateSurveyRecordNumbers(plotCount)
     const dsmNumbers = await generateDsmNumbers(plotCount)
     const osNumbers = await generateOsNumbers(plotCount)
@@ -375,7 +395,12 @@ const getLastPlotNumber = async (req, res) => {
     const { village } = req.params
     const latest = await LotAllocationRequest.findOne({ village }).sort({ createdAt: -1 })
     const lastPlot = latest && latest.plots.length ? latest.plots[latest.plots.length - 1].plotNumber : null
-    res.status(200).json({ success: true, village, lastPlotNumber: lastPlot })
+    res.status(200).json({
+      success: true,
+      village,
+      lastPlotNumber: lastPlot,
+      isFirstForVillage: !latest
+    })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
