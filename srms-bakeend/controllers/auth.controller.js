@@ -55,28 +55,18 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
-    // Validate userType matches actual role + group
+    // Validate userType matches actual role
     const roleMap = {
-      admin:     { roles: ['admin'],                        group: null },
-      dsm:       { roles: ['surveyor', 'officer', 'approver'], group: 'DSM' },
-      officer:   { roles: ['officer'],                     group: null },
-      approver:  { roles: ['approver'],                    group: null },
-      surveyor:  { roles: ['surveyor'],                    group: null, excludeGroups: ['Private', 'LandBoard'] },
-      private:   { roles: ['surveyor'],                    group: 'Private' },
-      landboard: { roles: ['surveyor'],                    group: 'LandBoard' },
+      admin:     ['admin'],
+      dsm:       ['surveyor', 'officer', 'approver'],
+      officer:   ['officer'],
+      approver:  ['approver'],
+      surveyor:  ['surveyor'],
+      private:   ['surveyor'],
+      landboard: ['surveyor'],
     }
-    if (userType && roleMap[userType]) {
-      const map = roleMap[userType]
-      const roleOk  = map.roles.includes(user.role)
-      const groupOk = map.group ? user.group === map.group : true
-      const notExcluded = map.excludeGroups ? !map.excludeGroups.includes(user.group) : true
-      if (!roleOk || !groupOk || !notExcluded) {
-        // Give a helpful hint if they picked the wrong user type
-        const hint = user.group === 'Private' ? ' Please select "Private Surveyor" as your user type.'
-          : user.group === 'LandBoard' ? ' Please select "Land Board Surveyor" as your user type.'
-          : ''
-        return res.status(400).json({ success: false, message: `Invalid credentials.${hint}` })
-      }
+    if (userType && roleMap[userType] && !roleMap[userType].includes(user.role)) {
+      return res.status(400).json({ success: false, message: 'Invalid credentials' })
     }
     if (user.isLocked) {
       return res.status(403).json({
@@ -93,7 +83,7 @@ const login = async (req, res) => {
     // If user has a surveyorCode, it must be provided and must match
     if (user.surveyorCode) {
       if (!surveyorCode || String(surveyorCode).trim() !== String(user.surveyorCode).trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid credentials' })
+        return res.status(400).json({ success: false, message: `Invalid surveyor registration number. Expected format: ${user.surveyorCode}` })
       }
     }
     const isMatch = await bcrypt.compare(password, user.password)
@@ -101,7 +91,7 @@ const login = async (req, res) => {
       user.failedLoginAttempts += 1
       if (user.failedLoginAttempts >= 5) user.isLocked = true
       await user.save()
-      return res.status(400).json({ success: false, message: 'Invalid credentials' })
+      return res.status(400).json({ success: false, message: 'Invalid password' })
     }
 
 
