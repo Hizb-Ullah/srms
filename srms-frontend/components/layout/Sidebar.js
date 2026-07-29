@@ -60,6 +60,10 @@ const menuItems = {
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
   ],
+  rmu: [
+    { label: 'RMU Dashboard',       path: '/rmu',                       icon: Home },
+    { label: 'Pending Collections', path: '/rmu?tab=pending',           icon: Inbox },
+  ],
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
@@ -113,6 +117,8 @@ export default function Sidebar() {
 
   const items = user.group === 'DSM' && user.subRole === 'Director'
     ? menuItems.director
+    : user.group === 'DSM' && user.subRole === 'RMU'
+    ? menuItems.rmu
     : user.group === 'DSM'
     ? menuItems.lotAllocator
     : (user.group === 'Private' || user.group === 'LandBoard')

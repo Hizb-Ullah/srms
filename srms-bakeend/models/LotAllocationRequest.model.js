@@ -16,6 +16,8 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   group: { type: String, enum: ['Private', 'LandBoard'], required: true },
   village: { type: String, required: true },
   landBoard: { type: String, default: '' },
+  // Auto-populated from village (City / Town / Urban Village / Village)
+  locationType: { type: String, default: '' },
   requestType: {
     type: String,
     enum: ['single_plot', 'multiple_plot', 'subdivision'],
@@ -49,7 +51,36 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   approvedAt: { type: Date },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectionReason: { type: String },
-  accountsEmailSentAt: { type: Date }
+  accountsEmailSentAt: { type: Date },
+
+  // ---------------- RMU (Records Management Unit) tracking ----------------
+  // Records are submitted physically by surveyors; RMU records them here,
+  // submits them to the Controller, receives them back once approved / not
+  // approved, and finally marks them as collected by the surveyor.
+  rmuStatus: {
+    type: String,
+    enum: [
+      'received_from_surveyor',
+      'submitted_to_controller',
+      'returned_from_controller',
+      'collected'
+    ],
+    default: null
+  },
+  rmuOutcome: { type: String, enum: ['approved', 'not_approved', null], default: null },
+  rmuReceivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  rmuReceivedAt: { type: Date },
+  rmuSubmittedToControllerAt: { type: Date },
+  rmuReturnedAt: { type: Date },
+  rmuCollectedAt: { type: Date },
+  rmuNotes: { type: String, default: '' },
+
+  // Payment receipt / invoice number entered by RMU (surveyors attach a copy
+  // of the payment receipt with their physical file). Once entered, the Lot
+  // Allocator's Active Requests list shows the request as "Paid".
+  paymentReceiptNumber: { type: String, default: '' },
+  receiptEnteredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  receiptEnteredAt: { type: Date }
 }, { timestamps: true })
 
 module.exports = mongoose.model('LotAllocationRequest', lotAllocationRequestSchema)

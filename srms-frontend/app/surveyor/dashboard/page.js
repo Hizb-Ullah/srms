@@ -31,7 +31,10 @@ function DashboardContent() {
   }, [])
 
   const submitted  = requests
-  const inProgress = requests.filter(r => !['approved','rejected'].includes(r.status))
+  // Fix: progress reflects DSM's actions only. A freshly submitted request
+  // (pending_allocator_review) is NOT "in progress" — it only enters progress
+  // once DSM (Lot Allocator) has acted on it.
+  const inProgress = requests.filter(r => ['awaiting_payment','pop_uploaded','payment_confirmed'].includes(r.status))
   const rts        = requests.filter(r => r.status === 'rejected')
   const approved   = requests.filter(r => r.status === 'approved')
 

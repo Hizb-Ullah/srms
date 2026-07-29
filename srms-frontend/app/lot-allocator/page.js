@@ -153,6 +153,16 @@ export default function LotAllocatorPage() {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOR[req.status] || 'bg-slate-100 text-slate-600'}`}>
             {STATUS_LABELS[req.status] || req.status}
           </span>
+          {req.paymentReceiptNumber && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+              Paid · Receipt {req.paymentReceiptNumber}
+            </span>
+          )}
+          {req.rmuStatus && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 capitalize">
+              RMU: {req.rmuStatus.replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 text-slate-400 shrink-0">
           <span className="text-xs">{new Date(req.createdAt).toLocaleDateString()}</span>
@@ -286,7 +296,7 @@ export default function LotAllocatorPage() {
   )
 
   return (
-    <DashboardLayout title="DSM — Director Dashboard">
+    <DashboardLayout title={`DSM — ${user?.subRole || "Dashboard"}`}>
       <div className="space-y-6">
 
         {/* Director: workflow stats */}

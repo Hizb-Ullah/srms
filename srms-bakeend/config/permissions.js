@@ -17,7 +17,11 @@ const PERMISSIONS = {
     'File Registration and Reservation': ['register_file', 'reserve_file'],
     'File Capturing': ['capture_file'],
     'File Examination': ['examine_file'],
-    'File Approval': ['approve_file']
+    'File Approval': ['approve_file'],
+    // RMU (Records Management Unit / Office) — receives physical records from
+    // surveyors, records them in system, submits to Controller, receives them
+    // back, and manages pending collections + payment receipt numbers.
+    RMU: ['rmu_manage', 'view_lot_requests']
   },
   Private: {
     'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests'],

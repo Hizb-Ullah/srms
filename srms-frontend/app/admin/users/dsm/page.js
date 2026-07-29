@@ -17,7 +17,8 @@ const SUB_ROLES = [
   'File Registration and Reservation',
   'File Capturing',
   'File Examination',
-  'File Approval'
+  'File Approval',
+  'RMU'
 ]
 // Roles limited to 1 account each
 const SINGLE_SLOT = ['Director', 'Secretary']

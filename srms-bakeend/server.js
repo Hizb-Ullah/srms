@@ -62,6 +62,7 @@ app.use('/api/workflow', require('./routes/workflow.routes'))
 app.use('/api/admin',    require('./routes/admin.routes'))
 app.use('/api/lot-requests', require('./routes/lotAllocation.routes'))
 app.use('/api/complaints', require('./routes/complaint.routes'))
+app.use('/api/rmu',      require('./routes/rmu.routes'))
 
 // Test route
 app.get('/', (req, res) => {
