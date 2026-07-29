@@ -184,7 +184,7 @@ export default function LotRequestsPage() {
 
   return (
     <DashboardLayout title="Lot Allocation Requests">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
 
         {/* Submit new request */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">

@@ -287,7 +287,7 @@ export default function LotAllocatorPage() {
 
   return (
     <DashboardLayout title="DSM — Director Dashboard">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
 
         {/* Director: workflow stats */}
         {user?.subRole === 'Director' && directorStats && (

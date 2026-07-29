@@ -34,10 +34,10 @@ const menuItems = {
   ],
   admin: [
     { label: 'Dashboard',      path: '/admin',                    icon: Home },
-    { label: 'Users',          path: null,                        icon: Users, badge: true, children: [
-      { label: 'DSM Employees',        path: '/admin/users/dsm' },
-      { label: 'Private Surveyors',    path: '/admin/users/private' },
-      { label: 'Land Board Surveyors', path: '/admin/users/landboard' },
+    { label: 'Users',          path: null,                        icon: Users, children: [
+      { label: 'DSM Employees',        path: '/admin/users/dsm',       group: 'DSM' },
+      { label: 'Private Surveyors',    path: '/admin/users/private',   group: 'Private' },
+      { label: 'Land Board Surveyors', path: '/admin/users/landboard', group: 'LandBoard' },
     ]},
     { label: 'Reset Requests', path: '/admin/reset-requests',     icon: KeyRound },
     { label: 'All Files',      path: '/admin/files',              icon: FolderOpen },
@@ -71,14 +71,18 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const [openGroup, setOpenGroup] = useState(null)
-  const [pendingCount, setPendingCount] = useState(0)
+  const [pendingCounts, setPendingCounts] = useState({ DSM: 0, Private: 0, LandBoard: 0 })
   const [openComplaints, setOpenComplaints] = useState(0)
 
   useEffect(() => {
     if (user?.role === 'admin' || (user?.group === 'DSM' && user?.subRole === 'Director')) {
       getAllUsers().then(res => {
-        const pending = res.data.data.filter(u => !u.isApproved || u.pendingDelete).length
-        setPendingCount(pending)
+        const all = res.data.data
+        setPendingCounts({
+          DSM:       all.filter(u => u.group === 'DSM'       && (!u.isApproved || u.pendingDelete)).length,
+          Private:   all.filter(u => u.group === 'Private'   && (!u.isApproved || u.pendingDelete)).length,
+          LandBoard: all.filter(u => u.group === 'LandBoard' && (!u.isApproved || u.pendingDelete)).length,
+        })
       }).catch(() => {})
     }
     if (user?.group === 'DSM') {
@@ -142,25 +146,28 @@ export default function Sidebar() {
                 >
                   <Icon size={18} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && pendingCount > 0 && (
-                    <span className="bg-rose-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{pendingCount}</span>
-                  )}
                   {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
                 {isOpen && (
                   <div className="ml-7 mt-1 space-y-1">
-                    {item.children.map(child => (
-                      <button
-                        key={child.path}
-                        onClick={() => router.push(child.path)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition active:scale-[0.98]
-                          ${pathname === child.path
-                            ? 'bg-white text-indigo-950 font-semibold shadow-sm'
-                            : 'text-indigo-200 hover:bg-white/10'}`}
-                      >
-                        {child.label}
-                      </button>
-                    ))}
+                    {item.children.map(child => {
+                        const cnt = child.group ? pendingCounts[child.group] || 0 : 0
+                        return (
+                          <button
+                            key={child.path}
+                            onClick={() => router.push(child.path)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs transition active:scale-[0.98] flex items-center justify-between
+                              ${pathname === child.path
+                                ? 'bg-white text-indigo-950 font-semibold shadow-sm'
+                                : 'text-indigo-200 hover:bg-white/10'}`}
+                          >
+                            <span>{child.label}</span>
+                            {cnt > 0 && (
+                              <span className="bg-rose-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{cnt}</span>
+                            )}
+                          </button>
+                        )
+                      })}
                   </div>
                 )}
               </div>
