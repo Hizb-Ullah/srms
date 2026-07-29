@@ -47,8 +47,13 @@ const menuItems = {
   ],
   // Group-based menus (Private / LandBoard surveyors)
   lotSurveyor: [
-    { label: 'Dashboard',      path: '/surveyor/dashboard', icon: Home },
-    { label: 'Lot Requests',   path: '/surveyor/lot-requests', icon: MapPin },
+    { label: 'Dashboard', path: null, icon: Home, children: [
+      { label: 'Submitted Files',          path: '/surveyor/dashboard?tab=submitted' },
+      { label: 'Progress of Submitted',    path: '/surveyor/dashboard?tab=progress' },
+      { label: 'Files On RTS',             path: '/surveyor/dashboard?tab=rts' },
+      { label: 'Approved Files',           path: '/surveyor/dashboard?tab=approved' },
+    ]},
+    { label: 'Lot Requests', path: '/surveyor/lot-requests', icon: MapPin },
   ],
   // DSM group (Lot Allocator / Director / Files Controller)
   lotAllocator: [
@@ -95,6 +100,7 @@ export default function Sidebar() {
   // Auto-open Users group if on a users sub-page
   useEffect(() => {
     if (pathname.startsWith('/admin/users')) setOpenGroup('Users')
+    if (pathname.startsWith('/surveyor/dashboard')) setOpenGroup('Dashboard')
   }, [pathname])
 
   const handleLogout = () => {
@@ -136,7 +142,7 @@ export default function Sidebar() {
           // Item with children (collapsible group)
           if (item.children) {
             const isOpen = openGroup === item.label
-            const anyChildActive = item.children.some(c => pathname === c.path)
+            const anyChildActive = item.children.some(c => pathname === c.path || pathname.startsWith(c.path?.split('?')[0]))
             return (
               <div key={item.label}>
                 <button
@@ -157,7 +163,8 @@ export default function Sidebar() {
                             key={child.path}
                             onClick={() => router.push(child.path)}
                             className={`w-full text-left px-3 py-2 rounded-lg text-xs transition active:scale-[0.98] flex items-center justify-between
-                              ${pathname === child.path
+                              ${pathname + (typeof window !== 'undefined' ? window.location.search : '') === child.path ||
+                                (pathname === child.path?.split('?')[0] && !child.path?.includes('?'))
                                 ? 'bg-white text-indigo-950 font-semibold shadow-sm'
                                 : 'text-indigo-200 hover:bg-white/10'}`}
                           >
