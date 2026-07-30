@@ -53,41 +53,36 @@ const createLotRequest = async (req, res) => {
       }
     }
 
-    // Check if this is the first-ever request for this village
-    const existingForVillage = await LotAllocationRequest.findOne({ village })
+    // Check if this is the first-ever request for this village — only
+    // requests that actually have assigned plot numbers count, so a still-
+    // pending first request doesn't block a concurrent one from also being
+    // treated as "first" (Counter hasn't been seeded yet either way).
+    const existingForVillage = await LotAllocationRequest.findOne({ village, 'plots.0': { $exists: true } })
     const isFirstForVillage = !existingForVillage
 
-    // If first time for this village, allocator can pass manualPlotStart
-    // (sent from frontend when reviewing). For subsequent requests, auto-generate.
-    let plotNumbers
-    if (isFirstForVillage && req.body.manualPlotStart) {
-      const startNum = parseInt(req.body.manualPlotStart, 10)
-      if (isNaN(startNum) || startNum < 1) {
-        return res.status(400).json({ success: false, message: 'Invalid manual plot start number' })
-      }
-      // Seed the counter to startNum - 1 so next auto-generate continues from startNum
-      const Counter = require('../models/Counter.model')
-      const counterKey = `plot-${village.trim().toLowerCase().replace(/\s+/g, '-')}`
-      await Counter.findOneAndUpdate(
-        { key: counterKey },
-        { $set: { seq: startNum - 1 } },
-        { upsert: true }
-      )
-      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
-    } else {
-      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
-    }
-    const srNumbers = await generateSurveyRecordNumbers(plotCount)
-    const dsmNumbers = await generateDsmNumbers(plotCount)
-    const osNumbers = await generateOsNumbers(plotCount)
+    // Subdivisions always reference an existing parent plot, so the village
+    // can never be "first" for one in practice — always generate immediately.
+    // For a genuinely first-time village, plot number assignment is deferred:
+    // the surveyor does not pick their own starting number, only the Lot
+    // Allocator does, when reviewing the request.
+    const deferPlotAssignment = isFirstForVillage && requestType !== 'subdivision'
 
-    const plots = plotNumbers.map((plotNumber, i) => ({
-      plotNumber,
-      surveyRecordNumber: srNumbers[i],
-      dsmNumber: dsmNumbers[i],
-      osNumber: osNumbers[i],
-      cadastreNumber: cadastreNumber || ''
-    }))
+    let plots = []
+    let plotNumbers = []
+    if (!deferPlotAssignment) {
+      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
+      const srNumbers = await generateSurveyRecordNumbers(plotCount)
+      const dsmNumbers = await generateDsmNumbers(plotCount)
+      const osNumbers = await generateOsNumbers(plotCount)
+
+      plots = plotNumbers.map((plotNumber, i) => ({
+        plotNumber,
+        surveyRecordNumber: srNumbers[i],
+        dsmNumber: dsmNumbers[i],
+        osNumber: osNumbers[i],
+        cadastreNumber: cadastreNumber || ''
+      }))
+    }
 
     const requestData = {
       requestedBy: req.user.id,
@@ -95,9 +90,11 @@ const createLotRequest = async (req, res) => {
       village,
       landBoard: landBoard || '',
       locationType: locationType || '',
+      cadastreNumber: cadastreNumber || '',
       requestType,
       surveyorCode: req.user.surveyorCode || '',
       plots,
+      pendingPlotCount: deferPlotAssignment ? plotCount : undefined,
       status: 'pending_allocator_review'
     }
 
@@ -115,7 +112,9 @@ const createLotRequest = async (req, res) => {
       action: `Lot allocation request submitted (${requestType}) for village ${village}`,
       performedBy: req.user.id,
       role: req.user.subRole || req.user.role,
-      remarks: `Plot number(s): ${plotNumbers.join(', ')}`
+      remarks: deferPlotAssignment
+        ? `First request for ${village} — plot number(s) pending Lot Allocator assignment`
+        : `Plot number(s): ${plotNumbers.join(', ')}`
     })
 
     // Step 3: Notify the Lot Allocator (in-app + email — client confirmed both)
@@ -158,7 +157,10 @@ const createLotRequest = async (req, res) => {
   }
 }
 
-// Lot Allocator's initial review — opens payment (Step 4 begins)
+// Lot Allocator's initial review — opens payment (Step 4 begins).
+// If this was the first-ever request for its village, plot number
+// assignment was deferred at submission — the Lot Allocator must supply a
+// starting plot number here before the request can proceed.
 const reviewRequest = async (req, res) => {
   try {
     const request = await LotAllocationRequest.findById(req.params.id)
@@ -168,6 +170,46 @@ const reviewRequest = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `Request is at status ${request.status}, cannot review`
+      })
+    }
+
+    if (request.plots.length === 0) {
+      const startNum = parseInt(req.body.manualPlotStart, 10)
+      if (!req.body.manualPlotStart || isNaN(startNum) || startNum < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'This is the first request for this village — a starting plot number is required'
+        })
+      }
+
+      const Counter = require('../models/Counter.model')
+      const counterKey = `plot-${request.village.trim().toLowerCase().replace(/\s+/g, '-')}`
+      await Counter.findOneAndUpdate(
+        { key: counterKey },
+        { $set: { seq: startNum - 1 } },
+        { upsert: true }
+      )
+
+      const count = request.pendingPlotCount || 1
+      const plotNumbers = await generatePlotNumbersForVillage(request.village, count)
+      const srNumbers = await generateSurveyRecordNumbers(count)
+      const dsmNumbers = await generateDsmNumbers(count)
+      const osNumbers = await generateOsNumbers(count)
+
+      request.plots = plotNumbers.map((plotNumber, i) => ({
+        plotNumber,
+        surveyRecordNumber: srNumbers[i],
+        dsmNumber: dsmNumbers[i],
+        osNumber: osNumbers[i],
+        cadastreNumber: request.cadastreNumber || ''
+      }))
+      request.pendingPlotCount = undefined
+
+      await logAction({
+        action: `Lot Allocator assigned starting plot number ${startNum} for ${request.village}`,
+        performedBy: req.user.id,
+        role: req.user.subRole,
+        remarks: `Plot number(s): ${plotNumbers.join(', ')}`
       })
     }
 
@@ -391,11 +433,14 @@ const getAllRequests = async (req, res) => {
   }
 }
 
-// Internal helper — last allocated plot number for a village
+// Internal helper — last allocated plot number for a village. Only counts
+// requests that actually have assigned plot numbers, so a still-pending
+// first request (awaiting the Lot Allocator's starting number) doesn't
+// falsely mark the village as already having plot numbers.
 const getLastPlotNumber = async (req, res) => {
   try {
     const { village } = req.params
-    const latest = await LotAllocationRequest.findOne({ village }).sort({ createdAt: -1 })
+    const latest = await LotAllocationRequest.findOne({ village, 'plots.0': { $exists: true } }).sort({ createdAt: -1 })
     const lastPlot = latest && latest.plots.length ? latest.plots[latest.plots.length - 1].plotNumber : null
     res.status(200).json({
       success: true,

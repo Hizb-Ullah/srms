@@ -86,6 +86,8 @@ export default function LotAllocatorPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [rejectingId, setRejectingId] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
+  const [plotStartFor, setPlotStartFor] = useState(null)
+  const [plotStartNumber, setPlotStartNumber] = useState('')
 
   useEffect(() => { fetchRequests() }, [])
 
@@ -108,11 +110,13 @@ export default function LotAllocatorPage() {
     }
   }
 
-  const act = async (fn, id, successMsg) => {
+  const act = async (fn, id, successMsg, data) => {
     setActionLoading(id)
     try {
-      await fn(id)
+      await fn(id, data)
       toast.success(successMsg)
+      setPlotStartFor(null)
+      setPlotStartNumber('')
       fetchRequests()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed')
@@ -173,16 +177,22 @@ export default function LotAllocatorPage() {
       {expanded === req._id && (
         <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-3">
           {/* Plot details */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {req.plots?.map((plot, i) => (
-              <div key={i} className="bg-slate-50 rounded-lg p-3 text-xs space-y-1">
-                <p className="font-mono font-bold text-indigo-700">{plot.plotNumber}</p>
-                <p className="text-slate-500">SR#: <span className="font-mono">{plot.surveyRecordNumber}</span></p>
-                <p className="text-slate-500">DSM#: <span className="font-mono">{plot.dsmNumber}</span></p>
-                <p className="text-slate-500">OS#: <span className="font-mono">{plot.osNumber}</span></p>
-              </div>
-            ))}
-          </div>
+          {req.plots?.length === 0 ? (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+              First request for {req.village} — {req.pendingPlotCount || 1} plot number(s) pending your assignment below.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {req.plots?.map((plot, i) => (
+                <div key={i} className="bg-slate-50 rounded-lg p-3 text-xs space-y-1">
+                  <p className="font-mono font-bold text-indigo-700">{plot.plotNumber}</p>
+                  <p className="text-slate-500">SR#: <span className="font-mono">{plot.surveyRecordNumber}</span></p>
+                  <p className="text-slate-500">DSM#: <span className="font-mono">{plot.dsmNumber}</span></p>
+                  <p className="text-slate-500">OS#: <span className="font-mono">{plot.osNumber}</span></p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {req.requestType === 'subdivision' && req.parentPlotNumber && (
             <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
@@ -212,7 +222,43 @@ export default function LotAllocatorPage() {
           {/* Action buttons */}
           <div className="flex flex-wrap gap-2 pt-1">
             {req.status === 'pending_allocator_review' && (
-              <>
+              req.plots?.length === 0 ? (
+                plotStartFor === req._id ? (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <input
+                      type="number"
+                      min={1}
+                      value={plotStartNumber}
+                      onChange={(e) => setPlotStartNumber(e.target.value)}
+                      placeholder="Starting plot number"
+                      className="border border-amber-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 w-40"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!plotStartNumber) return toast.error('Starting plot number is required')
+                        act(reviewLotRequest, req._id, 'Request reviewed — payment opened', { manualPlotStart: plotStartNumber })
+                      }}
+                      disabled={actionLoading === req._id}
+                      className="flex items-center gap-1.5 bg-sky-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-sky-700 active:scale-[0.98] transition disabled:opacity-50"
+                    >
+                      <ClipboardCheck size={14} /> Confirm & Open Payment
+                    </button>
+                    <button
+                      onClick={() => { setPlotStartFor(null); setPlotStartNumber('') }}
+                      className="border border-slate-200 text-slate-500 px-3 py-2 rounded-lg text-xs hover:bg-slate-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setPlotStartFor(req._id); setPlotStartNumber('') }}
+                    className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-amber-600 active:scale-[0.98] transition"
+                  >
+                    <ClipboardCheck size={14} /> Assign Starting Plot Number
+                  </button>
+                )
+              ) : (
                 <button
                   onClick={() => act(reviewLotRequest, req._id, 'Request reviewed — payment opened')}
                   disabled={actionLoading === req._id}
@@ -220,13 +266,16 @@ export default function LotAllocatorPage() {
                 >
                   <ClipboardCheck size={14} /> Review & Open Payment
                 </button>
-                <button
-                  onClick={() => setRejectingId(req._id)}
-                  className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-rose-100 transition"
-                >
-                  <XCircle size={14} /> Reject
-                </button>
-              </>
+              )
+            )}
+
+            {req.status === 'pending_allocator_review' && (
+              <button
+                onClick={() => setRejectingId(req._id)}
+                className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-rose-100 transition"
+              >
+                <XCircle size={14} /> Reject
+              </button>
             )}
 
             {req.status === 'pop_uploaded' && (

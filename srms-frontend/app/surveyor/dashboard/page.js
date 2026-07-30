@@ -30,13 +30,22 @@ function DashboardContent() {
       .finally(() => setLoading(false))
   }, [])
 
-  const submitted  = requests
-  // Fix: progress reflects DSM's actions only. A freshly submitted request
-  // (pending_allocator_review) is NOT "in progress" — it only enters progress
-  // once DSM (Lot Allocator) has acted on it.
-  const inProgress = requests.filter(r => ['awaiting_payment','pop_uploaded','payment_confirmed'].includes(r.status))
+  // Per client: "Submitted Files" and "Progress of Submitted Files" track two
+  // distinct milestones, not just the digital request's own status —
+  //   Progress of Submitted Files = plot number request approved by the Lot
+  //     Allocator (status moved past pending_allocator_review), but the
+  //     physical file hasn't reached RMU yet.
+  //   Submitted Files = the physical file has actually been submitted at DSM
+  //     and recorded/updated by RMU (rmuStatus is set).
+  // Once a request reaches a final outcome it belongs only to RTS/Approved,
+  // not double-counted in either of the above.
   const rts        = requests.filter(r => r.status === 'rejected')
   const approved   = requests.filter(r => r.status === 'approved')
+  const submitted  = requests.filter(r => r.rmuStatus && !['approved', 'rejected'].includes(r.status))
+  const inProgress = requests.filter(r =>
+    !r.rmuStatus &&
+    !['pending_allocator_review', 'approved', 'rejected'].includes(r.status)
+  )
 
   const cards = [
     { label: 'Submitted Files',             value: submitted.length,  icon: MapPin,      color: 'bg-indigo-50 text-indigo-700',  tab: 'submitted' },

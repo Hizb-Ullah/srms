@@ -44,7 +44,7 @@ export default function LotRequestsPage() {
 
   const [form, setForm] = useState({
     village: '', requestType: 'single_plot', plotCount: 2,
-    parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '', manualPlotStart: ''
+    parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -121,10 +121,9 @@ export default function LotRequestsPage() {
         payload.plotCount = form.plotCount
         payload.parentPlotNumber = form.parentPlotNumber
       }
-      if (isFirstVillage && form.manualPlotStart) payload.manualPlotStart = form.manualPlotStart
       await createLotRequest(payload)
       toast.success('Lot request submitted successfully')
-      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '', manualPlotStart: '' })
+      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '' })
       setLastPlot(null)
       setIsFirstVillage(false)
       fetchAll()
@@ -230,7 +229,7 @@ export default function LotRequestsPage() {
                 <p className="text-xs mt-1 text-slate-400">
                   {checkingVillage ? 'Checking village...' :
                     isFirstVillage
-                      ? <span className="text-amber-600 font-medium">⚠ First request for this village — enter starting plot number below</span>
+                      ? <span className="text-amber-600 font-medium">⚠ First request for this village — the Lot Allocator will assign the starting plot number</span>
                       : <>Next plot continues from <span className="font-mono text-indigo-600">{lastPlot}</span></>}
                 </p>
               )}
@@ -317,22 +316,6 @@ export default function LotRequestsPage() {
               </select>
             </div>
 
-            {isFirstVillage && (
-              <div>
-                <label className="block text-sm font-medium text-amber-700 mb-1">
-                  Starting Plot Number <span className="text-xs font-normal text-slate-500">(first request for this village)</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.manualPlotStart}
-                  onChange={(e) => setForm({ ...form, manualPlotStart: e.target.value })}
-                  placeholder="e.g. 1"
-                  className={`${inp} border-amber-300 focus:ring-amber-400`}
-                />
-                <p className="text-xs mt-1 text-amber-600">Plot numbers will start from this number for {form.village}</p>
-              </div>
-            )}
 
             <div className="sm:col-span-2">
               <button
@@ -394,17 +377,23 @@ export default function LotRequestsPage() {
                     {expanded === req._id && (
                       <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-3">
                         {/* Plot details */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {req.plots.map((plot, i) => (
-                            <div key={i} className="bg-slate-50 rounded-lg p-3 text-xs space-y-1">
-                              <p className="font-mono font-bold text-indigo-700">{plot.plotNumber}</p>
-                              <p className="text-slate-500">SR#: <span className="font-mono">{plot.surveyRecordNumber}</span></p>
-                              <p className="text-slate-500">DSM#: <span className="font-mono">{plot.dsmNumber}</span></p>
-                              <p className="text-slate-500">OS#: <span className="font-mono">{plot.osNumber}</span></p>
-                              {plot.cadastreNumber && <p className="text-slate-500">Cadastre: {plot.cadastreNumber}</p>}
-                            </div>
-                          ))}
-                        </div>
+                        {req.plots.length === 0 ? (
+                          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                            First request for {req.village} — plot number pending assignment by the Lot Allocator.
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {req.plots.map((plot, i) => (
+                              <div key={i} className="bg-slate-50 rounded-lg p-3 text-xs space-y-1">
+                                <p className="font-mono font-bold text-indigo-700">{plot.plotNumber}</p>
+                                <p className="text-slate-500">SR#: <span className="font-mono">{plot.surveyRecordNumber}</span></p>
+                                <p className="text-slate-500">DSM#: <span className="font-mono">{plot.dsmNumber}</span></p>
+                                <p className="text-slate-500">OS#: <span className="font-mono">{plot.osNumber}</span></p>
+                                {plot.cadastreNumber && <p className="text-slate-500">Cadastre: {plot.cadastreNumber}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {req.surveyorCode && (
                           <p className="text-xs text-slate-500">Surveyor Code: <span className="font-mono font-medium">{req.surveyorCode}</span></p>

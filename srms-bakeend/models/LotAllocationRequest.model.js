@@ -18,6 +18,7 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   landBoard: { type: String, default: '' },
   // Auto-populated from village (City / Town / Urban Village / Village)
   locationType: { type: String, default: '' },
+  cadastreNumber: { type: String, default: '' },
   requestType: {
     type: String,
     enum: ['single_plot', 'multiple_plot', 'subdivision'],
@@ -30,6 +31,10 @@ const lotAllocationRequestSchema = new mongoose.Schema({
     to: String
   },
   plots: { type: [plotEntrySchema], default: [] },
+  // Set only when this is the first-ever request for a village: plot number
+  // assignment is deferred until the Lot Allocator reviews it and supplies a
+  // starting number — surveyors never assign their own plot numbers.
+  pendingPlotCount: { type: Number },
   status: {
     type: String,
     enum: [

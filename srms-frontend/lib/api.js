@@ -67,7 +67,7 @@ export const getDirectorStats  = ()           => API.get('/admin/director-stats'
 export const createLotRequest      = (data)       => API.post('/lot-requests', data)
 export const getMyLotRequests      = ()           => API.get('/lot-requests/my')
 export const getAllLotRequests      = ()           => API.get('/lot-requests')
-export const reviewLotRequest      = (id)         => API.patch(`/lot-requests/${id}/review`)
+export const reviewLotRequest      = (id, data)   => API.patch(`/lot-requests/${id}/review`, data)
 export const uploadPop             = (id, data)   => API.post(`/lot-requests/${id}/pop`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const markPaymentReceived   = (id)         => API.patch(`/lot-requests/${id}/payment-received`)
 export const approveLotRequest     = (id)         => API.patch(`/lot-requests/${id}/approve`)
