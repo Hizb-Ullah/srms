@@ -99,6 +99,17 @@ export const getSectionCompleted    = (section)        => API.get(`/file-section
 export const takeSectionAction      = (section, id, data) => API.patch(`/file-sections/${section}/${id}/action`, data)
 export const sendSectionComment     = (section, id, data) => API.patch(`/file-sections/${section}/${id}/comment`, data)
 
+// Shape File Scratch — data consistency pre-check before submitting a
+// layout. Goes directly to the File Controller (not RMU), Controller sends
+// to Capturing, Capturing marks passed/failed + uploads a report.
+export const submitShapeScratch        = (data)      => API.post('/shape-scratch', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const getMyShapeScratchRequests = ()          => API.get('/shape-scratch/my')
+export const getControllerScratchRequests = ()       => API.get('/shape-scratch/controller')
+export const sendScratchToCapturing    = (id)        => API.patch(`/shape-scratch/${id}/send-to-capturing`)
+export const getCapturingScratchQueue     = ()       => API.get('/shape-scratch/capturing/queue')
+export const getCapturingScratchCompleted = ()       => API.get('/shape-scratch/capturing/completed')
+export const reviewScratchCapturing    = (id, data)  => API.patch(`/shape-scratch/${id}/review`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+
 // Complaints
 export const submitComplaint   = (requestId, data) => API.post(`/complaints/lot-requests/${requestId}`, data)
 export const getMyComplaints   = ()                => API.get('/complaints/my')

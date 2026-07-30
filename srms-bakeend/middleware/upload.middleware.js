@@ -18,13 +18,15 @@ const storage = multer.diskStorage({
   }
 })
 
+// Includes zip/shp/dbf/shx/prj so a bundled or unbundled GIS shapefile can be
+// submitted for a Shape File Scratch (data consistency check) request.
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /pdf|doc|docx|jpg|jpeg|png/
+  const allowedTypes = /pdf|doc|docx|jpg|jpeg|png|zip|shp|dbf|shx|prj/
   const extname = allowedTypes.test(file.originalname.toLowerCase())
   if (extname) {
     cb(null, true)
   } else {
-    cb(new Error('Only PDF, DOC, DOCX, JPG, PNG files allowed'), false)
+    cb(new Error('Only PDF, DOC, DOCX, JPG, PNG, ZIP, or shapefile (SHP/DBF/SHX/PRJ) files allowed'), false)
   }
 }
 

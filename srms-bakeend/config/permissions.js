@@ -24,12 +24,12 @@ const PERMISSIONS = {
     RMU: ['rmu_manage', 'view_lot_requests']
   },
   Private: {
-    'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests'],
-    'Assistant Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests']
+    'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch'],
+    'Assistant Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch']
   },
   LandBoard: {
-    'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests'],
-    'Assistant Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests']
+    'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch'],
+    'Assistant Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch']
   }
 }
 

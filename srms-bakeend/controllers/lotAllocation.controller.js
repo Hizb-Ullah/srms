@@ -16,6 +16,12 @@ const { getFileUrl } = require('../utils/fileUrl')
 // Client confirmed: multiple-plot requests max out at 5
 const MULTIPLE_PLOT_MAX = parseInt(process.env.MULTIPLE_PLOT_MAX || '5', 10)
 
+// Request types that divide an existing registered parent plot into multiple
+// new registrable parts — subdivision (land), sectional title (units within
+// a building), general plan (a subdivided block's overall diagram) — all
+// need a parent plot reference + a count of resulting parts.
+const PARENT_PLOT_TYPES = ['subdivision', 'sectional_title', 'general_plan']
+
 // Step 1-2: Surveyor (Private / Land Board) submits a lot number request —
 // plot numbers, SR#, DSM#, OS# are all auto-assigned here.
 const createLotRequest = async (req, res) => {
@@ -26,13 +32,13 @@ const createLotRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Village and request type are required' })
     }
 
-    if (!['single_plot', 'multiple_plot', 'subdivision', 'sectional_title'].includes(requestType)) {
+    if (!['single_plot', 'multiple_plot', 'subdivision', 'sectional_title', 'general_plan', 'borehole'].includes(requestType)) {
       return res.status(400).json({ success: false, message: 'Invalid request type' })
     }
 
     let plotCount
 
-    if (requestType === 'single_plot') {
+    if (requestType === 'single_plot' || requestType === 'borehole') {
       plotCount = 1
     } else if (requestType === 'multiple_plot') {
       plotCount = parseInt(req.body.plotCount, 10)
@@ -43,16 +49,17 @@ const createLotRequest = async (req, res) => {
         })
       }
     } else {
-      // subdivision / sectional title — both divide an existing registered
-      // plot into multiple new registrable parts (land subdivision vs. units
-      // within a building), so both need a parent plot reference + count.
+      // subdivision / sectional title / general plan — all divide an
+      // existing registered plot into multiple new registrable parts.
       plotCount = parseInt(req.body.plotCount, 10)
       if (!plotCount || plotCount < 1) {
         return res.status(400).json({
           success: false,
           message: requestType === 'sectional_title'
             ? 'Number of sectional units is required'
-            : 'Subdivision plot count is required'
+            : requestType === 'general_plan'
+              ? 'Number of plots on the general plan is required'
+              : 'Subdivision plot count is required'
         })
       }
       if (!parentPlotNumber) {
@@ -60,7 +67,9 @@ const createLotRequest = async (req, res) => {
           success: false,
           message: requestType === 'sectional_title'
             ? 'Parent plot number is required for a sectional title request'
-            : 'Parent plot number is required for a subdivision request'
+            : requestType === 'general_plan'
+              ? 'Parent plot number is required for a general plan request'
+              : 'Parent plot number is required for a subdivision request'
         })
       }
     }
@@ -72,28 +81,45 @@ const createLotRequest = async (req, res) => {
     const existingForVillage = await LotAllocationRequest.findOne({ village, 'plots.0': { $exists: true } })
     const isFirstForVillage = !existingForVillage
 
-    // Subdivisions and sectional titles always reference an existing parent
-    // plot, so the village can never be "first" for one in practice — always
-    // generate immediately. For a genuinely first-time village, plot number
-    // assignment is deferred: the surveyor does not pick their own starting
-    // number, only the Lot Allocator does, when reviewing the request.
-    const deferPlotAssignment = isFirstForVillage && !['subdivision', 'sectional_title'].includes(requestType)
+    // Requests that reference an existing parent plot can never be "first"
+    // for a village in practice — always generate immediately. For a
+    // genuinely first-time village, plot number assignment is deferred: the
+    // surveyor does not pick their own starting number, only the Lot
+    // Allocator does, when reviewing the request.
+    const deferPlotAssignment = isFirstForVillage && !PARENT_PLOT_TYPES.includes(requestType)
 
     let plots = []
     let plotNumbers = []
     if (!deferPlotAssignment) {
       plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
-      const srNumbers = await generateSurveyRecordNumbers(plotCount)
-      const dsmNumbers = await generateDsmNumbers(plotCount)
-      const osNumbers = await generateOsNumbers(plotCount)
 
-      plots = plotNumbers.map((plotNumber, i) => ({
-        plotNumber,
-        surveyRecordNumber: srNumbers[i],
-        dsmNumber: dsmNumbers[i],
-        osNumber: osNumbers[i],
-        cadastreNumber: cadastreNumber || ''
-      }))
+      if (requestType === 'general_plan') {
+        // Per client: every plot on a General Plan shares the SAME SR#,
+        // DSM#, and OS# — unlike Subdivision/Sectional Title, where each
+        // plot gets its own independent set.
+        const [sharedSr] = await generateSurveyRecordNumbers(1)
+        const [sharedDsm] = await generateDsmNumbers(1)
+        const [sharedOs] = await generateOsNumbers(1)
+        plots = plotNumbers.map((plotNumber) => ({
+          plotNumber,
+          surveyRecordNumber: sharedSr,
+          dsmNumber: sharedDsm,
+          osNumber: sharedOs,
+          cadastreNumber: cadastreNumber || ''
+        }))
+      } else {
+        const srNumbers = await generateSurveyRecordNumbers(plotCount)
+        const dsmNumbers = await generateDsmNumbers(plotCount)
+        const osNumbers = await generateOsNumbers(plotCount)
+
+        plots = plotNumbers.map((plotNumber, i) => ({
+          plotNumber,
+          surveyRecordNumber: srNumbers[i],
+          dsmNumber: dsmNumbers[i],
+          osNumber: osNumbers[i],
+          cadastreNumber: cadastreNumber || ''
+        }))
+      }
     }
 
     const requestData = {
@@ -110,7 +136,7 @@ const createLotRequest = async (req, res) => {
       status: 'pending_allocator_review'
     }
 
-    if (requestType === 'subdivision' || requestType === 'sectional_title') {
+    if (PARENT_PLOT_TYPES.includes(requestType)) {
       requestData.parentPlotNumber = parentPlotNumber
       requestData.subdivisionRange = {
         from: plotNumbers[0],

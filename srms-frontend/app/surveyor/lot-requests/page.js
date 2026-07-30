@@ -34,8 +34,14 @@ const REQUEST_TYPES = [
   { value: 'single_plot', label: 'Single Plot' },
   { value: 'multiple_plot', label: 'Multiple Plots' },
   { value: 'subdivision', label: 'Subdivision' },
-  { value: 'sectional_title', label: 'Sectional Title' }
+  { value: 'sectional_title', label: 'Sectional Title' },
+  { value: 'general_plan', label: 'General Plan' },
+  { value: 'borehole', label: 'Borehole' }
 ]
+
+// Request types that reference an existing parent plot (subdivided into
+// multiple new registrable parts) — need a parent plot number + a count.
+const PARENT_PLOT_TYPES = ['subdivision', 'sectional_title', 'general_plan']
 
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
@@ -123,7 +129,7 @@ export default function LotRequestsPage() {
         locationType: form.locationType
       }
       if (form.requestType === 'multiple_plot') payload.plotCount = form.plotCount
-      if (form.requestType === 'subdivision' || form.requestType === 'sectional_title') {
+      if (PARENT_PLOT_TYPES.includes(form.requestType)) {
         payload.plotCount = form.plotCount
         payload.parentPlotNumber = form.parentPlotNumber
       }
@@ -286,12 +292,14 @@ export default function LotRequestsPage() {
               </select>
             </div>
 
-            {(form.requestType === 'multiple_plot' || form.requestType === 'subdivision' || form.requestType === 'sectional_title') && (
+            {(form.requestType === 'multiple_plot' || PARENT_PLOT_TYPES.includes(form.requestType)) && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
                   {form.requestType === 'sectional_title'
                     ? 'Number of Sectional Units'
-                    : `Number of Plots ${form.requestType === 'multiple_plot' ? '(2–5)' : '(sub-division count)'}`}
+                    : form.requestType === 'general_plan'
+                      ? 'Number of Plots on General Plan'
+                      : `Number of Plots ${form.requestType === 'multiple_plot' ? '(2–5)' : '(sub-division count)'}`}
                 </label>
                 <input
                   type="number"
@@ -305,7 +313,7 @@ export default function LotRequestsPage() {
               </div>
             )}
 
-            {(form.requestType === 'subdivision' || form.requestType === 'sectional_title') && (
+            {PARENT_PLOT_TYPES.includes(form.requestType) && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Parent Plot Number</label>
                 <input
@@ -413,7 +421,7 @@ export default function LotRequestsPage() {
                           <p className="text-xs text-slate-500">Surveyor Code: <span className="font-mono font-medium">{req.surveyorCode}</span></p>
                         )}
 
-                        {(req.requestType === 'subdivision' || req.requestType === 'sectional_title') && req.parentPlotNumber && (
+                        {req.parentPlotNumber && (
                           <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
                         )}
 

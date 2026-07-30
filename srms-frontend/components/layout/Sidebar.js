@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
   CheckCircle, Users, FileBarChart, LogOut, KeyRound, Search, FileText,
-  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare, FileCheck, FileSearch
+  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare, FileCheck, FileSearch, FileUp
 } from 'lucide-react'
 
 const menuItems = {
@@ -54,6 +54,7 @@ const menuItems = {
       { label: 'Authorised Files',         path: '/surveyor/dashboard?tab=approved' },
     ]},
     { label: 'Lot Requests', path: '/surveyor/lot-requests', icon: MapPin },
+    { label: 'Request Shape File Scratch', path: '/surveyor/shape-scratch', icon: FileUp },
   ],
   // DSM group — Lot Allocator sub-role only does plot allocation; per client
   // ("lot allocator has got nothing to do with other services... they cant
@@ -67,6 +68,7 @@ const menuItems = {
   filesController: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
+    { label: 'Shape File Scratch', path: '/controller?section=scratch', icon: FileUp },
     { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
     { label: 'File Registration & Reservation', path: '/controller?section=registration', icon: FolderOpen },
     { label: 'File Capturing',                  path: '/controller?section=capturing',    icon: FileCheck },
@@ -89,6 +91,7 @@ const menuItems = {
   ],
   capturing: [
     { label: 'File Capturing', path: '/capturing', icon: Home },
+    { label: 'Scratch Files',  path: '/capturing?tab=scratch', icon: FileUp },
     { label: 'Search',         path: '/search',    icon: Search },
   ],
   examination: [
@@ -102,6 +105,7 @@ const menuItems = {
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
+    { label: 'Shape File Scratch', path: '/controller?section=scratch', icon: FileUp },
     { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
     { label: 'File Registration & Reservation', path: '/controller?section=registration', icon: FolderOpen },
     { label: 'File Capturing',                  path: '/controller?section=capturing',    icon: FileCheck },

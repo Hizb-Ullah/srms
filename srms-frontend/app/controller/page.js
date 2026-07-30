@@ -3,11 +3,11 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import DashboardLayout from '@/app/dashboard-layout'
-import { getControllerFiles, moveControllerStage, returnFileToRmu } from '@/lib/api'
+import { getControllerFiles, moveControllerStage, returnFileToRmu, getControllerScratchRequests, sendScratchToCapturing } from '@/lib/api'
 import toast from 'react-hot-toast'
 import {
   Inbox, Send, FileCheck, FileSearch, CheckCircle,
-  ChevronDown, ChevronUp, RotateCcw, FolderOpen
+  ChevronDown, ChevronUp, RotateCcw, FolderOpen, FileUp
 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
@@ -79,6 +79,7 @@ function ControllerWorkflowContent() {
   const section = searchParams.get('section') || 'unassigned'
 
   const [files, setFiles] = useState([])
+  const [scratchRequests, setScratchRequests] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
@@ -90,10 +91,25 @@ function ControllerWorkflowContent() {
     try {
       const res = await getControllerFiles()
       setFiles(res.data.data)
+      const scRes = await getControllerScratchRequests()
+      setScratchRequests(scRes.data.data)
     } catch {
       toast.error('Failed to load controller files')
     } finally {
       setFetching(false)
+    }
+  }
+
+  const handleSendToCapturing = async (id) => {
+    setActionLoading(id)
+    try {
+      await sendScratchToCapturing(id)
+      toast.success('Sent to Capturing')
+      fetchFiles()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -310,18 +326,92 @@ function ControllerWorkflowContent() {
               )}
             </button>
           ))}
+          <button
+            onClick={() => router.push('/controller?section=scratch')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
+              section === 'scratch' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Shape File Scratch
+            {scratchRequests.filter(s => s.status === 'received_from_surveyor').length > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                {scratchRequests.filter(s => s.status === 'received_from_surveyor').length}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">{SECTIONS.find(s => s.key === section)?.label}</h3>
-          {fetching ? (
-            <TableSkeleton rows={3} />
-          ) : visible.length === 0 ? (
-            <p className="text-slate-500 text-sm">No files in this section.</p>
-          ) : (
-            <div className="space-y-3">{visible.map(renderFile)}</div>
-          )}
-        </div>
+        {section === 'scratch' ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Shape File Scratch Requests</h3>
+            {fetching ? (
+              <TableSkeleton rows={3} />
+            ) : scratchRequests.length === 0 ? (
+              <p className="text-slate-500 text-sm">No shape file scratch requests yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {scratchRequests.map(s => (
+                  <div key={s._id} className="border border-slate-100 rounded-xl p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="font-medium text-sm text-slate-800">{s.fileName}</span>
+                        <span className="text-xs text-slate-400">{s.requestedBy?.name || '—'}</span>
+                        <span className="text-xs text-slate-400 capitalize">
+                          {s.linkType === 'general_plan' ? 'General Plan' : 'Parent'}: {s.referenceSrNumber} / {s.referenceDsmNumber}
+                        </span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          s.status === 'received_from_surveyor' ? 'bg-sky-50 text-sky-700' :
+                          s.status === 'sent_to_capturing' ? 'bg-amber-50 text-amber-700' :
+                          'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          {s.status === 'received_from_surveyor' ? 'Received from Surveyor' :
+                            s.status === 'sent_to_capturing' ? 'In Progress (Capturing)' : 'Forwarded to Surveyor'}
+                        </span>
+                        {s.capturingOutcome && (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            s.capturingOutcome === 'passed' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {s.capturingOutcome === 'passed' ? 'Passed' : 'Failed'}
+                          </span>
+                        )}
+                      </div>
+                      <a href={s.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 underline shrink-0">
+                        View File
+                      </a>
+                    </div>
+
+                    {s.reportUrl && (
+                      <a href={s.reportUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-indigo-600 underline mt-2">
+                        View Capturing Report
+                      </a>
+                    )}
+
+                    {s.status === 'received_from_surveyor' && (
+                      <button
+                        onClick={() => handleSendToCapturing(s._id)}
+                        disabled={actionLoading === s._id}
+                        className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-50 mt-3"
+                      >
+                        <Send size={14} /> Send to Capturing
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">{SECTIONS.find(s => s.key === section)?.label}</h3>
+            {fetching ? (
+              <TableSkeleton rows={3} />
+            ) : visible.length === 0 ? (
+              <p className="text-slate-500 text-sm">No files in this section.</p>
+            ) : (
+              <div className="space-y-3">{visible.map(renderFile)}</div>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
