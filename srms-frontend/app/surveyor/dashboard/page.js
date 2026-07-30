@@ -16,6 +16,39 @@ const STATUS_LABELS = {
   rejected: 'Rejected'
 }
 
+// RMU / Controller stage labels — this is the file's real physical progress,
+// separate from the digital lot-allocation request's own status.
+const RMU_STATUS_LABELS = {
+  received_from_surveyor: 'Received by RMU',
+  submitted_to_controller: 'With Controller',
+  returned_from_controller: 'Returned — Pending Collection',
+  collected: 'Collected',
+  in_storage: 'In Storage'
+}
+
+const CONTROLLER_STAGE_LABELS = {
+  received_unassigned: 'With Controller — Not Yet Assigned',
+  sent_to_registration: 'Sent to Registration & Reservation',
+  received_from_registration: 'In Registration & Reservation',
+  sent_to_capturing: 'Sent to Capturing',
+  received_from_capturing: 'In Capturing',
+  sent_to_examination: 'Sent to Examination',
+  received_from_examination: 'In Examination',
+  sent_to_approval: 'Sent to Approval',
+  received_from_approval: 'In Approval'
+}
+
+// Per client: once RMU registers a file, and every time the Controller moves
+// it onward, the surveyor should see that live progress — not the digital
+// lot-allocation request's own status.
+const getFileProgress = (r) => {
+  if (!r.rmuStatus) return null
+  if (r.rmuStatus === 'submitted_to_controller' && r.controllerStage && CONTROLLER_STAGE_LABELS[r.controllerStage]) {
+    return CONTROLLER_STAGE_LABELS[r.controllerStage]
+  }
+  return RMU_STATUS_LABELS[r.rmuStatus] || r.rmuStatus
+}
+
 function DashboardContent() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -30,22 +63,14 @@ function DashboardContent() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Per client: "Submitted Files" and "Progress of Submitted Files" track two
-  // distinct milestones, not just the digital request's own status —
-  //   Progress of Submitted Files = plot number request approved by the Lot
-  //     Allocator (status moved past pending_allocator_review), but the
-  //     physical file hasn't reached RMU yet.
-  //   Submitted Files = the physical file has actually been submitted at DSM
-  //     and recorded/updated by RMU (rmuStatus is set).
-  // Once a request reaches a final outcome it belongs only to RTS/Approved,
-  // not double-counted in either of the above.
-  const rts        = requests.filter(r => r.status === 'rejected')
-  const approved   = requests.filter(r => r.status === 'approved')
-  const submitted  = requests.filter(r => r.rmuStatus && !['approved', 'rejected'].includes(r.status))
-  const inProgress = requests.filter(r =>
-    !r.rmuStatus &&
-    !['pending_allocator_review', 'approved', 'rejected'].includes(r.status)
-  )
+  const rts       = requests.filter(r => r.status === 'rejected')
+  const approved  = requests.filter(r => r.status === 'approved')
+  // Submitted Files: the physical file has been submitted at DSM and
+  // recorded by RMU (rmuStatus is set) — not just a digital request made.
+  const submitted = requests.filter(r => !!r.rmuStatus)
+  // Progress of Submitted Files: those same submitted files, while still
+  // actively moving through RMU/Controller (not yet collected or archived).
+  const inProgress = requests.filter(r => r.rmuStatus && !['collected', 'in_storage'].includes(r.rmuStatus))
 
   const cards = [
     { label: 'Submitted Files',             value: submitted.length,  icon: MapPin,      color: 'bg-indigo-50 text-indigo-700',  tab: 'submitted' },
@@ -55,13 +80,13 @@ function DashboardContent() {
   ]
 
   const tabData = {
-    submitted: { list: submitted,  title: 'Submitted Files' },
-    progress:  { list: inProgress, title: 'Files In Progress' },
-    rts:       { list: rts,        title: 'Files On RTS (Returned)' },
-    approved:  { list: approved,   title: 'Approved Files' },
+    submitted: { list: submitted,  title: 'Submitted Files',        useFileProgress: true },
+    progress:  { list: inProgress, title: 'Progress of Submitted Files', useFileProgress: true },
+    rts:       { list: rts,        title: 'Files On RTS (Returned)', useFileProgress: false },
+    approved:  { list: approved,   title: 'Approved Files',          useFileProgress: false },
   }
 
-  const RequestTable = ({ list, emptyMsg }) => (
+  const RequestTable = ({ list, emptyMsg, useFileProgress = false }) => (
     list.length === 0
       ? <p className="text-slate-500 text-sm">{emptyMsg}</p>
       : (
@@ -75,20 +100,29 @@ function DashboardContent() {
             </tr>
           </thead>
           <tbody>
-            {list.map(r => (
-              <tr key={r._id} className="border-b border-slate-50 hover:bg-slate-50 transition">
-                <td className="py-3 font-medium">{r.village}</td>
-                <td className="py-3 text-slate-500 capitalize">{r.requestType?.replace(/_/g, ' ')}</td>
-                <td className="py-3">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    r.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                    r.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
-                    'bg-amber-50 text-amber-700'
-                  }`}>{STATUS_LABELS[r.status] || r.status?.replace(/_/g, ' ')}</span>
-                </td>
-                <td className="py-3 text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
+            {list.map(r => {
+              const fileProgress = useFileProgress ? getFileProgress(r) : null
+              return (
+                <tr key={r._id} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                  <td className="py-3 font-medium">{r.village}</td>
+                  <td className="py-3 text-slate-500 capitalize">{r.requestType?.replace(/_/g, ' ')}</td>
+                  <td className="py-3">
+                    {fileProgress ? (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">
+                        {fileProgress}
+                      </span>
+                    ) : (
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        r.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                        r.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
+                        'bg-amber-50 text-amber-700'
+                      }`}>{STATUS_LABELS[r.status] || r.status?.replace(/_/g, ' ')}</span>
+                    )}
+                  </td>
+                  <td className="py-3 text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       )
@@ -135,7 +169,7 @@ function DashboardContent() {
               <h3 className="font-semibold text-slate-800 mb-4">{tabData[tab]?.title}</h3>
               {loading
                 ? <p className="text-slate-400 text-sm">Loading...</p>
-                : <RequestTable list={tabData[tab]?.list || []} emptyMsg="No records found." />
+                : <RequestTable list={tabData[tab]?.list || []} emptyMsg="No records found." useFileProgress={tabData[tab]?.useFileProgress} />
               }
             </>
           )}
