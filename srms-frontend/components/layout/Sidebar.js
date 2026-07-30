@@ -51,12 +51,20 @@ const menuItems = {
       { label: 'Submitted Files',          path: '/surveyor/dashboard?tab=submitted' },
       { label: 'Progress of Submitted',    path: '/surveyor/dashboard?tab=progress' },
       { label: 'Files On RTS',             path: '/surveyor/dashboard?tab=rts' },
-      { label: 'Approved Files',           path: '/surveyor/dashboard?tab=approved' },
+      { label: 'Authorised Files',         path: '/surveyor/dashboard?tab=approved' },
     ]},
     { label: 'Lot Requests', path: '/surveyor/lot-requests', icon: MapPin },
   ],
-  // DSM group (Lot Allocator / Director / Files Controller)
+  // DSM group — Lot Allocator sub-role only does plot allocation; per client
+  // ("lot allocator has got nothing to do with other services... they cant
+  // check progress"), they do NOT get the Controller file-workflow section.
   lotAllocator: [
+    { label: 'Dashboard',      path: '/lot-allocator',              icon: Home },
+    { label: 'Lot Requests',   path: '/lot-allocator',              icon: Inbox, complaintBadge: true },
+    { label: 'Statistics',     path: '/lot-allocator?tab=stats',    icon: FileBarChart },
+  ],
+  // Files Controller — runs the DSM file workflow (Director has this too).
+  filesController: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
     { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
@@ -160,6 +168,8 @@ export default function Sidebar() {
     ? menuItems.director
     : user.group === 'DSM' && DSM_SUB_ROLE_MENUS[user.subRole]
     ? DSM_SUB_ROLE_MENUS[user.subRole]
+    : user.group === 'DSM' && user.subRole === 'Files Controller'
+    ? menuItems.filesController
     : user.group === 'DSM'
     ? menuItems.lotAllocator
     : (user.group === 'Private' || user.group === 'LandBoard')

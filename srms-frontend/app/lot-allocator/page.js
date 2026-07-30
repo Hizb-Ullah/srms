@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import DashboardLayout from '@/app/dashboard-layout'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -16,15 +17,20 @@ import {
   resolveComplaint
 } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { ChevronDown, ChevronUp, CheckCircle, XCircle, CreditCard, ClipboardCheck, MapPin, FolderOpen, AlertTriangle, FileCheck, FileSearch, Send, Inbox, MessageSquare } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, CreditCard, ClipboardCheck, MapPin, FolderOpen, AlertTriangle, FileCheck, FileSearch, Send, Inbox, MessageSquare, BarChart3 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
+// Note: the LotAllocationRequest's own "approved" status is the Lot
+// Allocator's digital sign-off on the plot allocation itself — displayed as
+// "Authorised". The word "Approved" is reserved for when the physical survey
+// record is finally approved after the full RMU/Controller review pipeline
+// (see rmuOutcome-based labels elsewhere), a different, later milestone.
 const STATUS_LABELS = {
   pending_allocator_review: 'Pending Review',
   awaiting_payment: 'Awaiting Payment',
   pop_uploaded: 'POP Uploaded',
   payment_confirmed: 'Payment Confirmed',
-  approved: 'Approved',
+  approved: 'Authorised',
   rejected: 'Rejected'
 }
 
@@ -75,8 +81,10 @@ function ResolveComplaintInline({ id, onDone }) {
   )
 }
 
-export default function LotAllocatorPage() {
+function LotAllocatorContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const tab = searchParams.get('tab') || 'requests'
   const [requests, setRequests] = useState([])
   const [pendingUsers, setPendingUsers] = useState([])
   const [directorStats, setDirectorStats] = useState(null)
@@ -143,6 +151,35 @@ export default function LotAllocatorPage() {
 
   const pending = requests.filter((r) => !['approved', 'rejected'].includes(r.status))
   const closed  = requests.filter((r) => ['approved', 'rejected'].includes(r.status))
+
+  // Per client: Lot Allocator only does plot allocations — their statistics
+  // are Received Request / Issued Request / Authorised Request, monthly.
+  // "Authorised" here (not "Approved") — "Approved" is reserved for when the
+  // physical survey record is finally approved after the RMU/Controller
+  // pipeline, a separate, later milestone.
+  const receivedCount   = requests.length
+  const issuedCount     = requests.filter(r => r.plots && r.plots.length > 0).length
+  const authorisedCount = requests.filter(r => r.status === 'approved').length
+
+  const monthlyStats = Object.values(
+    requests.reduce((acc, r) => {
+      const d = new Date(r.createdAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          received: 0,
+          issued: 0,
+          authorised: 0
+        }
+      }
+      acc[key].received += 1
+      if (r.plots && r.plots.length > 0) acc[key].issued += 1
+      if (r.status === 'approved') acc[key].authorised += 1
+      return acc
+    }, {})
+  ).sort((a, b) => b.key.localeCompare(a.key))
 
   const renderRequest = (req) => (
     <div key={req._id} className="border border-slate-100 rounded-xl overflow-hidden">
@@ -299,11 +336,11 @@ export default function LotAllocatorPage() {
             {req.status === 'payment_confirmed' && (
               <>
                 <button
-                  onClick={() => act(approveLotRequest, req._id, 'Request approved — Accounts office notified')}
+                  onClick={() => act(approveLotRequest, req._id, 'Request authorised — Accounts office notified')}
                   disabled={actionLoading === req._id}
                   className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.98] transition disabled:opacity-50"
                 >
-                  <CheckCircle size={14} /> Final Approval
+                  <CheckCircle size={14} /> Final Authorisation
                 </button>
                 <button
                   onClick={() => setRejectingId(req._id)}
@@ -403,69 +440,130 @@ export default function LotAllocatorPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">
-            Active Requests
-            {pending.length > 0 && (
-              <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                {pending.length}
-              </span>
-            )}
-          </h3>
-
-          {fetching ? (
-            <TableSkeleton rows={4} />
-          ) : pending.length === 0 ? (
-            <p className="text-slate-500 text-sm">No active requests.</p>
-          ) : (
-            <div className="space-y-3">{pending.map(renderRequest)}</div>
-          )}
-        </div>
-
-        {closed.length > 0 && (
+        {tab === 'stats' ? (
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-            <h3 className="font-semibold text-slate-800 mb-4">Closed Requests</h3>
-            <div className="space-y-3">{closed.map(renderRequest)}</div>
-          </div>
-        )}
-
-        {/* Complaints panel */}
-        {complaints.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <MessageSquare size={18} className="text-orange-500" />
-              Surveyor Complaints
-              {complaints.filter(c => c.status === 'open').length > 0 && (
-                <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {complaints.filter(c => c.status === 'open').length} open
-                </span>
-              )}
-            </h3>
-            <div className="space-y-3">
-              {complaints.map(c => (
-                <div key={c._id} className={`border rounded-xl p-4 ${
-                  c.status === 'open' ? 'border-orange-200 bg-orange-50' : 'border-slate-100'
-                }`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-800">{c.submittedBy?.name}</p>
-                      <p className="text-xs text-slate-500">{c.submittedBy?.surveyorCode} · {c.requestId?.village} ({c.requestId?.status?.replace(/_/g,' ')})</p>
-                      <p className="text-sm text-slate-700 mt-1">{c.message}</p>
-                      {c.resolution && <p className="text-xs text-emerald-700 mt-1">Resolution: {c.resolution}</p>}
-                    </div>
-                    {c.status === 'open' && (
-                      <ResolveComplaintInline id={c._id} onDone={fetchRequests} />
-                    )}
-                    {c.status === 'resolved' && (
-                      <span className="text-xs text-emerald-600 font-medium shrink-0">Resolved</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 size={18} className="text-indigo-600" />
+              <h3 className="font-semibold text-slate-800">Statistics</h3>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="border border-sky-200 bg-sky-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-sky-700 opacity-80">Received Request</p>
+                <p className="text-2xl font-bold text-sky-700">{fetching ? '—' : receivedCount}</p>
+              </div>
+              <div className="border border-violet-200 bg-violet-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-violet-700 opacity-80">Issued Request</p>
+                <p className="text-2xl font-bold text-violet-700">{fetching ? '—' : issuedCount}</p>
+              </div>
+              <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-emerald-700 opacity-80">Authorised Request</p>
+                <p className="text-2xl font-bold text-emerald-700">{fetching ? '—' : authorisedCount}</p>
+              </div>
+            </div>
+
+            {fetching ? (
+              <TableSkeleton rows={4} />
+            ) : monthlyStats.length === 0 ? (
+              <p className="text-slate-500 text-sm">No data yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-slate-100">
+                    <th className="pb-3">Month</th>
+                    <th className="pb-3">Received Request</th>
+                    <th className="pb-3">Issued Request</th>
+                    <th className="pb-3">Authorised Request</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyStats.map(m => (
+                    <tr key={m.key} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                      <td className="py-3 font-medium">{m.label}</td>
+                      <td className="py-3 text-sky-700 font-semibold">{m.received}</td>
+                      <td className="py-3 text-violet-700 font-semibold">{m.issued}</td>
+                      <td className="py-3 text-emerald-700 font-semibold">{m.authorised}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+              <h3 className="font-semibold text-slate-800 mb-4">
+                Active Requests
+                {pending.length > 0 && (
+                  <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {pending.length}
+                  </span>
+                )}
+              </h3>
+
+              {fetching ? (
+                <TableSkeleton rows={4} />
+              ) : pending.length === 0 ? (
+                <p className="text-slate-500 text-sm">No active requests.</p>
+              ) : (
+                <div className="space-y-3">{pending.map(renderRequest)}</div>
+              )}
+            </div>
+
+            {closed.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                <h3 className="font-semibold text-slate-800 mb-4">Closed Requests</h3>
+                <div className="space-y-3">{closed.map(renderRequest)}</div>
+              </div>
+            )}
+
+            {/* Complaints panel */}
+            {complaints.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <MessageSquare size={18} className="text-orange-500" />
+                  Surveyor Complaints
+                  {complaints.filter(c => c.status === 'open').length > 0 && (
+                    <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                      {complaints.filter(c => c.status === 'open').length} open
+                    </span>
+                  )}
+                </h3>
+                <div className="space-y-3">
+                  {complaints.map(c => (
+                    <div key={c._id} className={`border rounded-xl p-4 ${
+                      c.status === 'open' ? 'border-orange-200 bg-orange-50' : 'border-slate-100'
+                    }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-800">{c.submittedBy?.name}</p>
+                          <p className="text-xs text-slate-500">{c.submittedBy?.surveyorCode} · {c.requestId?.village} ({c.requestId?.status?.replace(/_/g,' ')})</p>
+                          <p className="text-sm text-slate-700 mt-1">{c.message}</p>
+                          {c.resolution && <p className="text-xs text-emerald-700 mt-1">Resolution: {c.resolution}</p>}
+                        </div>
+                        {c.status === 'open' && (
+                          <ResolveComplaintInline id={c._id} onDone={fetchRequests} />
+                        )}
+                        {c.status === 'resolved' && (
+                          <span className="text-xs text-emerald-600 font-medium shrink-0">Resolved</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function LotAllocatorPage() {
+  return (
+    <Suspense fallback={null}>
+      <LotAllocatorContent />
+    </Suspense>
   )
 }

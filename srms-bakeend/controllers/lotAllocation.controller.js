@@ -346,10 +346,10 @@ const approveRequest = async (req, res) => {
     await request.save()
 
     await logAction({
-      action: 'Lot allocation request given final approval',
+      action: 'Lot allocation request given final authorisation',
       performedBy: req.user.id,
       role: req.user.subRole,
-      remarks: `Request ${request._id} approved`
+      remarks: `Request ${request._id} authorised`
     })
 
     await sendAccountsOfficeEmail({ request })
@@ -360,11 +360,11 @@ const approveRequest = async (req, res) => {
       global.io.to(request.requestedBy._id.toString()).emit('lotRequestUpdate', {
         requestId: request._id,
         status: 'approved',
-        message: 'Your lot allocation request has been approved.'
+        message: 'Your lot allocation request has been authorised.'
       })
     }
 
-    res.status(200).json({ success: true, message: 'Request approved and Accounts office notified', data: request })
+    res.status(200).json({ success: true, message: 'Request authorised and Accounts office notified', data: request })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }

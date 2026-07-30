@@ -7,12 +7,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Clock, RotateCcw, CheckCircle, BarChart3 } from 'lucide-react'
 
+// Note: "approved" here is the digital lot-allocation request's own final
+// status (the Lot Allocator's sign-off) — shown as "Authorised". "Approved"
+// is reserved for when the physical survey record is finally approved after
+// the RMU/Controller review pipeline (see getFileProgress below).
 const STATUS_LABELS = {
   pending_allocator_review: 'Pending Review',
   awaiting_payment: 'Awaiting Payment',
   pop_uploaded: 'POP Uploaded',
   payment_confirmed: 'Payment Confirmed',
-  approved: 'Approved',
+  approved: 'Authorised',
   rejected: 'Rejected'
 }
 
@@ -98,14 +102,14 @@ function DashboardContent() {
     { label: 'Submitted Files',             value: submitted.length,  icon: MapPin,      color: 'bg-indigo-50 text-indigo-700',  tab: 'submitted' },
     { label: 'Progress of Submitted Files', value: inProgress.length, icon: Clock,       color: 'bg-amber-50 text-amber-700',    tab: 'progress' },
     { label: 'Files on RTS',                value: rts.length,        icon: RotateCcw,   color: 'bg-rose-50 text-rose-700',      tab: 'rts' },
-    { label: 'Approved Files',              value: approved.length,   icon: CheckCircle, color: 'bg-emerald-50 text-emerald-700', tab: 'approved' },
+    { label: 'Authorised Files',             value: approved.length,   icon: CheckCircle, color: 'bg-emerald-50 text-emerald-700', tab: 'approved' },
   ]
 
   const tabData = {
     submitted: { list: submitted,  title: 'Submitted Files',        useFileProgress: true },
     progress:  { list: inProgress, title: 'Progress of Submitted Files', useFileProgress: true },
     rts:       { list: rts,        title: 'Files On RTS (Returned)', useFileProgress: false },
-    approved:  { list: approved,   title: 'Approved Files',          useFileProgress: false },
+    approved:  { list: approved,   title: 'Authorised Files',        useFileProgress: false },
   }
 
   const RequestTable = ({ list, emptyMsg, useFileProgress = false }) => (
@@ -212,7 +216,7 @@ function DashboardContent() {
                       <th className="pb-3">Month</th>
                       <th className="pb-3">Submitted Files</th>
                       <th className="pb-3">Files on RTS</th>
-                      <th className="pb-3">Approved Files</th>
+                      <th className="pb-3">Authorised Files</th>
                     </tr>
                   </thead>
                   <tbody>
