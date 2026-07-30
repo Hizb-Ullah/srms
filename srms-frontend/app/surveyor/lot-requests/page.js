@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/app/dashboard-layout'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -12,7 +13,7 @@ import {
   getLastPlotNumber
 } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { MapPin, Upload, ChevronDown, ChevronUp, MessageSquare, X } from 'lucide-react'
+import { MapPin, Upload, ChevronDown, ChevronUp, MessageSquare, X, Home } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { VILLAGES, VILLAGE_LOOKUP, LAND_BOARDS } from '@/lib/botswanaData'
 
@@ -36,6 +37,7 @@ const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus
 
 export default function LotRequestsPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [requests, setRequests] = useState([])
   const [complaints, setComplaints] = useState([])
   const [fetching, setFetching] = useState(true)
@@ -177,6 +179,12 @@ export default function LotRequestsPage() {
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => router.push('/surveyor/dashboard')}
+            className="px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center gap-1.5"
+          >
+            <Home size={14} /> Dashboard
+          </button>
           <button
             onClick={() => setActiveTab('new')}
             className={`px-5 py-2.5 text-sm font-medium border-b-2 transition ${

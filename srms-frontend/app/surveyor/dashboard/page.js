@@ -5,7 +5,7 @@ import DashboardLayout from '@/app/dashboard-layout'
 import { getMyLotRequests } from '@/lib/api'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Clock, RotateCcw, CheckCircle } from 'lucide-react'
+import { MapPin, Clock, RotateCcw, CheckCircle, BarChart3 } from 'lucide-react'
 
 const STATUS_LABELS = {
   pending_allocator_review: 'Pending Review',
@@ -71,6 +71,28 @@ function DashboardContent() {
   // Progress of Submitted Files: those same submitted files, while still
   // actively moving through RMU/Controller (not yet collected or archived).
   const inProgress = requests.filter(r => r.rmuStatus && !['collected', 'in_storage'].includes(r.rmuStatus))
+
+  // Monthly statistics — Submitted / RTS / Approved totals grouped by the
+  // month the request was originally made, most recent month first.
+  const monthlyStats = Object.values(
+    requests.reduce((acc, r) => {
+      const d = new Date(r.createdAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+          submitted: 0,
+          rts: 0,
+          approved: 0
+        }
+      }
+      if (r.rmuStatus) acc[key].submitted += 1
+      if (r.status === 'rejected') acc[key].rts += 1
+      if (r.status === 'approved') acc[key].approved += 1
+      return acc
+    }, {})
+  ).sort((a, b) => b.key.localeCompare(a.key))
 
   const cards = [
     { label: 'Submitted Files',             value: submitted.length,  icon: MapPin,      color: 'bg-indigo-50 text-indigo-700',  tab: 'submitted' },
@@ -150,6 +172,18 @@ function DashboardContent() {
           ))}
         </div>
 
+        {/* Statistics button — monthly Submitted / RTS / Approved totals */}
+        <button
+          onClick={() => router.push('/surveyor/dashboard?tab=stats')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition active:scale-[0.98] ${
+            tab === 'stats'
+              ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <BarChart3 size={16} /> Statistics
+        </button>
+
         {/* Tab content */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           {tab === 'overview' ? (
@@ -163,6 +197,36 @@ function DashboardContent() {
                 ? <p className="text-slate-400 text-sm">Loading...</p>
                 : <RequestTable list={requests.slice(0, 5)} emptyMsg="No lot requests yet." />
               }
+            </>
+          ) : tab === 'stats' ? (
+            <>
+              <h3 className="font-semibold text-slate-800 mb-4">Monthly Statistics</h3>
+              {loading ? (
+                <p className="text-slate-400 text-sm">Loading...</p>
+              ) : monthlyStats.length === 0 ? (
+                <p className="text-slate-500 text-sm">No data yet.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b border-slate-100">
+                      <th className="pb-3">Month</th>
+                      <th className="pb-3">Submitted Files</th>
+                      <th className="pb-3">Files on RTS</th>
+                      <th className="pb-3">Approved Files</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyStats.map(m => (
+                      <tr key={m.key} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                        <td className="py-3 font-medium">{m.label}</td>
+                        <td className="py-3 text-indigo-700 font-semibold">{m.submitted}</td>
+                        <td className="py-3 text-rose-700 font-semibold">{m.rts}</td>
+                        <td className="py-3 text-emerald-700 font-semibold">{m.approved}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </>
           ) : (
             <>
