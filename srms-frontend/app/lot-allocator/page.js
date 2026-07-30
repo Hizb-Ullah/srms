@@ -231,7 +231,7 @@ function LotAllocatorContent() {
             </div>
           )}
 
-          {req.requestType === 'subdivision' && req.parentPlotNumber && (
+          {(req.requestType === 'subdivision' || req.requestType === 'sectional_title') && req.parentPlotNumber && (
             <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
           )}
 

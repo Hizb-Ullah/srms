@@ -154,7 +154,7 @@ export default function PrivateSurveyorsPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-amber-600 text-xs font-medium">Pending</span>
-                        {(currentUser?.role === 'admin' || (currentUser?.group === 'DSM' && currentUser?.subRole === 'Director')) && (
+                        {(currentUser?.group === 'DSM' && currentUser?.subRole === 'Director') && (
                           <button onClick={() => handleApprove(u._id)}
                             className="flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-xs hover:bg-emerald-700 transition">
                             <CheckCircle size={11} /> Approve

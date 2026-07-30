@@ -151,12 +151,23 @@ const createUser = async (req, res) => {
   }
 }
 
-// Director approves a pending user account
+// Director approves a pending user account. Admin may only approve the
+// Director account itself — approval of every other account (DSM sub-roles,
+// Private/Land Board surveyors) is the Director's responsibility.
 const approveUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).json({ success: false, message: 'User not found' })
     if (user.isApproved) return res.status(400).json({ success: false, message: 'User is already approved' })
+
+    const isAdmin = req.user.role === 'admin'
+    const isDirector = req.user.group === 'DSM' && req.user.subRole === 'Director'
+    if (isAdmin && !isDirector && user.subRole !== 'Director') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin can only approve the Director account. All other accounts must be approved by the Director.'
+      })
+    }
 
     user.isApproved = true
     user.approvedBy = req.user.id

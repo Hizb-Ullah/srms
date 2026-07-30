@@ -21,7 +21,7 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   cadastreNumber: { type: String, default: '' },
   requestType: {
     type: String,
-    enum: ['single_plot', 'multiple_plot', 'subdivision'],
+    enum: ['single_plot', 'multiple_plot', 'subdivision', 'sectional_title'],
     required: true
   },
   surveyorCode: { type: String },

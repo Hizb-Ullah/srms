@@ -44,7 +44,10 @@ export default function DsmEmployeesPage() {
   const [newPw, setNewPw]           = useState('')
   const [saving, setSaving]         = useState(false)
 
-  const canApprove = currentUser?.role === 'admin' || (currentUser?.group === 'DSM' && currentUser?.subRole === 'Director')
+  const isDirector = currentUser?.group === 'DSM' && currentUser?.subRole === 'Director'
+  // Admin may only approve the Director account itself — every other DSM
+  // sub-role must be approved by the Director.
+  const canApprove = (targetSubRole) => isDirector || (currentUser?.role === 'admin' && targetSubRole === 'Director')
 
   const loadUsers = async () => {
     try {
@@ -183,7 +186,7 @@ export default function DsmEmployeesPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-amber-600 text-xs font-medium">Pending</span>
-                        {canApprove && (
+                        {canApprove(u.subRole) && (
                           <button onClick={() => handleApprove(u._id)}
                             className="flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-xs hover:bg-emerald-700 transition">
                             <CheckCircle size={11} /> Approve

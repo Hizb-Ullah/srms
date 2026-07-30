@@ -26,7 +26,7 @@ const createLotRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Village and request type are required' })
     }
 
-    if (!['single_plot', 'multiple_plot', 'subdivision'].includes(requestType)) {
+    if (!['single_plot', 'multiple_plot', 'subdivision', 'sectional_title'].includes(requestType)) {
       return res.status(400).json({ success: false, message: 'Invalid request type' })
     }
 
@@ -43,13 +43,25 @@ const createLotRequest = async (req, res) => {
         })
       }
     } else {
-      // subdivision
+      // subdivision / sectional title — both divide an existing registered
+      // plot into multiple new registrable parts (land subdivision vs. units
+      // within a building), so both need a parent plot reference + count.
       plotCount = parseInt(req.body.plotCount, 10)
       if (!plotCount || plotCount < 1) {
-        return res.status(400).json({ success: false, message: 'Subdivision plot count is required' })
+        return res.status(400).json({
+          success: false,
+          message: requestType === 'sectional_title'
+            ? 'Number of sectional units is required'
+            : 'Subdivision plot count is required'
+        })
       }
       if (!parentPlotNumber) {
-        return res.status(400).json({ success: false, message: 'Parent plot number is required for a subdivision request' })
+        return res.status(400).json({
+          success: false,
+          message: requestType === 'sectional_title'
+            ? 'Parent plot number is required for a sectional title request'
+            : 'Parent plot number is required for a subdivision request'
+        })
       }
     }
 
@@ -60,12 +72,12 @@ const createLotRequest = async (req, res) => {
     const existingForVillage = await LotAllocationRequest.findOne({ village, 'plots.0': { $exists: true } })
     const isFirstForVillage = !existingForVillage
 
-    // Subdivisions always reference an existing parent plot, so the village
-    // can never be "first" for one in practice — always generate immediately.
-    // For a genuinely first-time village, plot number assignment is deferred:
-    // the surveyor does not pick their own starting number, only the Lot
-    // Allocator does, when reviewing the request.
-    const deferPlotAssignment = isFirstForVillage && requestType !== 'subdivision'
+    // Subdivisions and sectional titles always reference an existing parent
+    // plot, so the village can never be "first" for one in practice — always
+    // generate immediately. For a genuinely first-time village, plot number
+    // assignment is deferred: the surveyor does not pick their own starting
+    // number, only the Lot Allocator does, when reviewing the request.
+    const deferPlotAssignment = isFirstForVillage && !['subdivision', 'sectional_title'].includes(requestType)
 
     let plots = []
     let plotNumbers = []
@@ -98,7 +110,7 @@ const createLotRequest = async (req, res) => {
       status: 'pending_allocator_review'
     }
 
-    if (requestType === 'subdivision') {
+    if (requestType === 'subdivision' || requestType === 'sectional_title') {
       requestData.parentPlotNumber = parentPlotNumber
       requestData.subdivisionRange = {
         from: plotNumbers[0],
