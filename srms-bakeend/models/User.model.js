@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema({
       'File Examination',
       'File Approval',
       'RMU',
+      'Accounts',
       // Private & Land Board groups
       'Registered Land Surveyor',
       'Assistant Surveyor'
