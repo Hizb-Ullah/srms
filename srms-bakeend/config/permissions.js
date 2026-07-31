@@ -21,7 +21,10 @@ const PERMISSIONS = {
     // RMU (Records Management Unit / Office) — receives physical records from
     // surveyors, records them in system, submits to Controller, receives them
     // back, and manages pending collections + payment receipt numbers.
-    RMU: ['rmu_manage', 'view_lot_requests']
+    RMU: ['rmu_manage', 'view_lot_requests'],
+    // Accounts — logs the Accounts-office receipt number against an already-
+    // authorised request (bookkeeping only, per client's Accounts schema).
+    Accounts: ['accounts_manage']
   },
   Private: {
     'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch'],

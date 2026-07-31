@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import {
   Home, Hash, FolderOpen, ClipboardList,
   CheckCircle, Users, FileBarChart, LogOut, KeyRound, Search, FileText,
-  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare, FileCheck, FileSearch, FileUp
+  MapPin, Inbox, ChevronDown, ChevronRight, MessageSquare, FileCheck, FileSearch, FileUp, Wallet
 } from 'lucide-react'
 
 const menuItems = {
@@ -102,6 +102,9 @@ const menuItems = {
     { label: 'File Approval', path: '/approval', icon: Home },
     { label: 'Search',        path: '/search',   icon: Search },
   ],
+  accounts: [
+    { label: 'Accounts', path: '/accounts', icon: Wallet },
+  ],
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
     { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
@@ -165,7 +168,8 @@ export default function Sidebar() {
     'File Registration and Reservation': menuItems.registration,
     'File Capturing': menuItems.capturing,
     'File Examination': menuItems.examination,
-    'File Approval': menuItems.approval
+    'File Approval': menuItems.approval,
+    Accounts: menuItems.accounts
   }
 
   const items = user.group === 'DSM' && user.subRole === 'Director'

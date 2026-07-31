@@ -135,7 +135,15 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   // Allocator's Active Requests list shows the request as "Paid".
   paymentReceiptNumber: { type: String, default: '' },
   receiptEnteredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  receiptEnteredAt: { type: Date }
+  receiptEnteredAt: { type: Date },
+
+  // ---------------- Accounts (per client's Accounts schema) ----------------
+  // After final authorisation, Accounts logs the payment against the
+  // request's SR# with their own official receipt number — bookkeeping
+  // only, does not affect the lot-allocation/RMU/Controller pipeline.
+  accountsReceiptNumber: { type: String, default: '' },
+  accountsAcceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  accountsAcceptedAt: { type: Date }
 }, { timestamps: true })
 
 module.exports = mongoose.model('LotAllocationRequest', lotAllocationRequestSchema)

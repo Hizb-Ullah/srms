@@ -88,6 +88,13 @@ export const rmuSendStandaloneComment = (data)     => API.post('/rmu/comments', 
 export const rmuGetStandaloneComments = ()         => API.get('/rmu/comments')
 export const rmuSendToStorage        = (id)        => API.patch(`/rmu/${id}/storage`)
 
+// Accounts — logs the Accounts-office receipt number against an already-
+// authorised request (Add Payment → SR# → Receipt# → Add/Accept). Bookkeeping
+// only, no effect on the lot-allocation/RMU/Controller pipeline.
+export const getAccountsQueue       = ()          => API.get('/accounts/queue')
+export const getAccountsCompleted   = ()          => API.get('/accounts/completed')
+export const acceptAccountsPayment  = (id, data)  => API.patch(`/accounts/${id}/accept`, data)
+
 // Controller workflow
 export const getControllerFiles     = ()          => API.get('/controller/files')
 export const moveControllerStage    = (id, data)  => API.patch(`/controller/${id}/stage`, data)
