@@ -72,4 +72,45 @@ const acceptPayment = async (req, res) => {
   }
 }
 
-module.exports = { getAccountsQueue, getAccountsCompleted, acceptPayment }
+// Add Payment by SR# — the actual client flow: Accounts types in the SR#
+// directly (not tied to browsing a pre-populated queue row), then the
+// Receipt #, then Add/Accept to finalize.
+const acceptPaymentBySr = async (req, res) => {
+  try {
+    const { srNumber, receiptNumber } = req.body
+    if (!srNumber || !srNumber.trim()) {
+      return res.status(400).json({ success: false, message: 'SR# is required' })
+    }
+    if (!receiptNumber || !receiptNumber.trim()) {
+      return res.status(400).json({ success: false, message: 'Receipt number is required' })
+    }
+
+    const record = await LotAllocationRequest.findOne({ 'plots.surveyRecordNumber': srNumber.trim() })
+    if (!record) return res.status(404).json({ success: false, message: 'No request found with that SR#' })
+
+    if (record.status !== 'approved') {
+      return res.status(400).json({ success: false, message: 'Only authorised (final) requests can be logged by Accounts' })
+    }
+    if (record.accountsAcceptedAt) {
+      return res.status(400).json({ success: false, message: 'Accounts has already logged this SR#' })
+    }
+
+    record.accountsReceiptNumber = receiptNumber.trim()
+    record.accountsAcceptedBy = req.user.id
+    record.accountsAcceptedAt = new Date()
+    await record.save()
+
+    await logAction({
+      action: 'Accounts logged payment and accepted request',
+      performedBy: req.user.id,
+      role: req.user.subRole || req.user.role,
+      remarks: `Record ${record._id} (${record.village}) — SR# ${srNumber.trim()}, receipt ${receiptNumber.trim()}`
+    })
+
+    res.status(200).json({ success: true, message: 'Payment logged and accepted', data: record })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+module.exports = { getAccountsQueue, getAccountsCompleted, acceptPayment, acceptPaymentBySr }

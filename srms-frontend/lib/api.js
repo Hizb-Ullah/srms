@@ -94,6 +94,7 @@ export const rmuSendToStorage        = (id)        => API.patch(`/rmu/${id}/stor
 export const getAccountsQueue       = ()          => API.get('/accounts/queue')
 export const getAccountsCompleted   = ()          => API.get('/accounts/completed')
 export const acceptAccountsPayment  = (id, data)  => API.patch(`/accounts/${id}/accept`, data)
+export const acceptAccountsPaymentBySr = (data)   => API.post('/accounts/accept-by-sr', data)
 
 // Controller workflow
 export const getControllerFiles     = ()          => API.get('/controller/files')

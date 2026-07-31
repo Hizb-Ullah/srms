@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '@/app/dashboard-layout'
-import { getAccountsQueue, getAccountsCompleted, acceptAccountsPayment } from '@/lib/api'
+import { getAccountsQueue, getAccountsCompleted, acceptAccountsPayment, acceptAccountsPaymentBySr } from '@/lib/api'
 import toast from 'react-hot-toast'
-import { Wallet, CheckCircle, Inbox } from 'lucide-react'
+import { Wallet, CheckCircle, Inbox, Plus } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
 // Per client's Accounts schema: Add Payment -> SR# -> Receipt# -> Add/Accept.
@@ -21,6 +21,13 @@ export default function AccountsPage() {
   const [receiptNumber, setReceiptNumber] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
   const inputRef = useRef()
+
+  // Standalone Add Payment form — the actual client flow: Accounts starts a
+  // new entry by typing the SR# directly, then Receipt#, then Add/Accept.
+  const [formOpen, setFormOpen] = useState(false)
+  const [formSr, setFormSr] = useState('')
+  const [formReceipt, setFormReceipt] = useState('')
+  const [formLoading, setFormLoading] = useState(false)
 
   useEffect(() => { fetchAll() }, [])
 
@@ -57,9 +64,80 @@ export default function AccountsPage() {
 
   const list = tab === 'queue' ? queue : completed
 
+  const handleFormSubmit = async (e) => {
+    e.preventDefault()
+    if (!formSr.trim()) return toast.error('SR# is required')
+    if (!formReceipt.trim()) return toast.error('Receipt # is required')
+    setFormLoading(true)
+    try {
+      await acceptAccountsPaymentBySr({ srNumber: formSr.trim(), receiptNumber: formReceipt.trim() })
+      toast.success('Payment logged and accepted')
+      setFormOpen(false)
+      setFormSr('')
+      setFormReceipt('')
+      fetchAll()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
   return (
     <DashboardLayout title="Accounts">
       <div className="space-y-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          {!formOpen ? (
+            <button
+              onClick={() => setFormOpen(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition"
+            >
+              <Plus size={16} /> Add Payment
+            </button>
+          ) : (
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <h3 className="font-semibold text-slate-800">Add Payment</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">SR#</label>
+                  <input
+                    autoFocus
+                    value={formSr}
+                    onChange={(e) => setFormSr(e.target.value)}
+                    placeholder="e.g. 10/2026"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Receipt#</label>
+                  <input
+                    value={formReceipt}
+                    onChange={(e) => setFormReceipt(e.target.value)}
+                    placeholder="Enter Receipt #"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+                >
+                  <CheckCircle size={16} /> {formLoading ? 'Submitting...' : 'Add / Accept'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFormOpen(false); setFormSr(''); setFormReceipt('') }}
+                  className="border border-slate-200 text-slate-500 px-4 py-2.5 rounded-lg text-sm hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => setTab('queue')}
