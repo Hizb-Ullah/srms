@@ -7,7 +7,7 @@ import {
   rmuSearchRecord,
   rmuGetRecords,
   rmuGetPendingCollections,
-  rmuReceiveRecord,
+  rmuAddNewArrival,
   rmuEnterReceipt,
   rmuSubmitToController,
   rmuReturnFromController,
@@ -20,7 +20,7 @@ import {
 import toast from 'react-hot-toast'
 import {
   Search, Inbox, Send, PackageCheck, ClipboardList,
-  ChevronDown, ChevronUp, CheckCircle, XCircle, Receipt, MessageSquare, X
+  ChevronDown, ChevronUp, CheckCircle, XCircle, Receipt, MessageSquare, X, FileBarChart, Plus
 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
@@ -38,6 +38,35 @@ const RMU_STATUS_COLOR = {
   returned_from_controller: 'bg-amber-50 text-amber-700',
   collected: 'bg-emerald-50 text-emerald-700',
   in_storage: 'bg-slate-100 text-slate-700'
+}
+
+const CONTROLLER_STAGE_LABELS = {
+  received_unassigned: 'Received from RMU (not yet assigned)',
+  sent_to_registration: 'Sent to Registration & Reservation',
+  received_from_registration: 'Received from Registration',
+  sent_to_capturing: 'Sent to Capturing',
+  received_from_capturing: 'Received from Capturing',
+  sent_to_examination: 'Sent to Examination',
+  received_from_examination: 'Received from Examination',
+  sent_to_approval: 'Sent to Approval',
+  received_from_approval: 'Received from Approval',
+  returned_to_rmu: 'Returned to RMU'
+}
+
+// Every stage transition is timestamped automatically — Check File Status
+// pulls this together into one auto-generated timeline, no manual entry.
+const buildTimeline = (rec) => {
+  const events = []
+  if (rec.rmuReceivedAt) events.push({ at: rec.rmuReceivedAt, label: 'Received from Surveyor (New Arrival)' })
+  if (rec.receiptEnteredAt) events.push({ at: rec.receiptEnteredAt, label: `Receipt Recorded — ${rec.paymentReceiptNumber}` })
+  if (rec.rmuSubmittedToControllerAt) events.push({ at: rec.rmuSubmittedToControllerAt, label: 'Sent to Controller' })
+  rec.controllerHistory?.forEach(h => {
+    events.push({ at: h.at, label: CONTROLLER_STAGE_LABELS[h.stage] || h.stage })
+  })
+  if (rec.rmuReturnedAt) events.push({ at: rec.rmuReturnedAt, label: `Returned from Controller — ${rec.rmuOutcome === 'approved' ? 'Approved' : 'Not Approved'}` })
+  if (rec.rmuCollectedAt) events.push({ at: rec.rmuCollectedAt, label: 'Collected — Dispatched' })
+  if (rec.rmuStorageAt) events.push({ at: rec.rmuStorageAt, label: 'Sent to Storage' })
+  return events.sort((a, b) => new Date(a.at) - new Date(b.at))
 }
 
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
@@ -62,8 +91,25 @@ function RmuContent() {
   const [receiptFor, setReceiptFor] = useState(null)
   const [receiptNumber, setReceiptNumber] = useState('')
 
+  // New Arrival — Officer does not search; they ADD the file by typing its
+  // Set # (SR#) and Receipt #, then click OK/Receive.
+  const [addOpen, setAddOpen] = useState(false)
+  const [addSr, setAddSr] = useState('')
+  const [addReceipt, setAddReceipt] = useState('')
+  const [addLoading, setAddLoading] = useState(false)
+
+  // Collected — Officer enters the surveyor's registration number to confirm
+  // identity before the Collected/Dispatched action activates
+  const [collectFor, setCollectFor] = useState(null)
+  const [collectCode, setCollectCode] = useState('')
+
   // Return outcome
   const [returnFor, setReturnFor] = useState(null)
+
+  // Reports — RMU can query and filter their own records
+  const [reportFilters, setReportFilters] = useState({ status: '', village: '', surveyorCode: '', from: '', to: '' })
+  const [reportResults, setReportResults] = useState(null)
+  const [reportLoading, setReportLoading] = useState(false)
 
   // Send Surveyor Comment modal
   const [commentFor, setCommentFor] = useState(null)
@@ -157,6 +203,16 @@ function RmuContent() {
     }
   }
 
+  // Refreshes every view that could be showing a now-stale record — the main
+  // lists, and (if currently populated) the Check File Status search results
+  // and the Reports query results, since renderRecord's action buttons are
+  // reused inside both.
+  const refreshViews = async () => {
+    await fetchAll()
+    if (searchResults) handleSearch()
+    if (reportResults) runReport()
+  }
+
   const act = async (fn, id, successMsg, data) => {
     setActionLoading(id)
     try {
@@ -165,12 +221,65 @@ function RmuContent() {
       setReceiptFor(null)
       setReceiptNumber('')
       setReturnFor(null)
-      await fetchAll()
-      if (searchResults) handleSearch()
+      await refreshViews()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  // Add New Arrival — Officer types Set # (SR#) + Receipt #, clicks OK. No
+  // search step; the record is looked up and received in one action.
+  const handleAddNewArrival = async (e) => {
+    e.preventDefault()
+    if (!addSr.trim()) return toast.error('Set # (SR#) is required')
+    if (!addReceipt.trim()) return toast.error('Receipt number is required')
+    setAddLoading(true)
+    try {
+      await rmuAddNewArrival({ srNumber: addSr.trim(), receiptNumber: addReceipt.trim() })
+      toast.success('New arrival added')
+      setAddOpen(false)
+      setAddSr('')
+      setAddReceipt('')
+      await fetchAll()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  // Collected — Officer enters the surveyor's registration number to confirm
+  // identity before this activates.
+  const handleCollected = async (id) => {
+    if (!collectCode.trim()) return toast.error("Surveyor's registration number is required")
+    setActionLoading(id)
+    try {
+      await rmuMarkCollected(id, { surveyorCode: collectCode.trim() })
+      toast.success('File marked as collected — Received from RMU on surveyor\'s portal')
+      setCollectFor(null)
+      setCollectCode('')
+      await refreshViews()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const runReport = async (e) => {
+    e?.preventDefault()
+    setReportLoading(true)
+    try {
+      const params = {}
+      Object.entries(reportFilters).forEach(([k, v]) => { if (v.trim()) params[k] = v.trim() })
+      const res = await rmuGetRecords(params)
+      setReportResults(res.data.data)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to run report')
+    } finally {
+      setReportLoading(false)
     }
   }
 
@@ -190,7 +299,7 @@ function RmuContent() {
     { label: 'In Storage',              value: stats.inStorage,      icon: ClipboardList, color: 'bg-slate-100 text-slate-700' },
   ]
 
-  const renderRecord = (rec, { fromSearch = false } = {}) => (
+  const renderRecord = (rec, { fromSearch = false, quickSend = false } = {}) => (
     <div key={rec._id} className="border border-slate-100 rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded(expanded === rec._id ? null : rec._id)}
@@ -222,6 +331,16 @@ function RmuContent() {
           )}
         </div>
         <div className="flex items-center gap-2 text-slate-400 shrink-0">
+          {quickSend && rec.rmuStatus === 'received_from_surveyor' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); act(rmuSubmitToController, rec._id, 'Record submitted to Controller') }}
+              disabled={actionLoading === rec._id || (rec.group === 'Private' && !rec.paymentReceiptNumber)}
+              title={rec.group === 'Private' && !rec.paymentReceiptNumber ? 'Receipt # required for Private surveyors' : 'Send to Controller'}
+              className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send size={13} /> Send
+            </button>
+          )}
           <span className="text-xs">{new Date(rec.createdAt).toLocaleDateString()}</span>
           {expanded === rec._id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
@@ -258,16 +377,12 @@ function RmuContent() {
           {/* Action buttons per RMU stage */}
           <div className="flex flex-wrap gap-2 pt-1">
             {!rec.rmuStatus && (
-              <button
-                onClick={() => act(rmuReceiveRecord, rec._id, 'Record marked as received', {})}
-                disabled={actionLoading === rec._id}
-                className="flex items-center gap-1.5 bg-sky-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-sky-700 active:scale-[0.98] transition disabled:opacity-50"
-              >
-                <Inbox size={14} /> Record as Received
-              </button>
+              <p className="text-xs text-slate-500 italic">
+                Not yet received — use &quot;New Arrival Files&quot; to receive it (SR# + Receipt # together).
+              </p>
             )}
 
-            {!rec.paymentReceiptNumber && (
+            {rec.rmuStatus && !rec.paymentReceiptNumber && (
               receiptFor === rec._id ? (
                 <div className="flex gap-2 items-center">
                   <input
@@ -381,13 +496,36 @@ function RmuContent() {
             </button>
 
             {rec.rmuStatus === 'returned_from_controller' && (
-              <button
-                onClick={() => act(rmuMarkCollected, rec._id, 'File marked as dispatched')}
-                disabled={actionLoading === rec._id}
-                className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.98] transition disabled:opacity-50"
-              >
-                <PackageCheck size={14} /> ② Dispatched
-              </button>
+              collectFor === rec._id ? (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    value={collectCode}
+                    onChange={(e) => setCollectCode(e.target.value)}
+                    placeholder="Surveyor's registration number"
+                    className="border border-emerald-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 w-56"
+                  />
+                  <button
+                    onClick={() => handleCollected(rec._id)}
+                    disabled={actionLoading === rec._id}
+                    className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.98] transition disabled:opacity-50"
+                  >
+                    <PackageCheck size={14} /> ② Collected
+                  </button>
+                  <button
+                    onClick={() => { setCollectFor(null); setCollectCode('') }}
+                    className="border border-slate-200 text-slate-500 px-3 py-2 rounded-lg text-xs hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setCollectFor(rec._id); setCollectCode('') }}
+                  className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.98] transition"
+                >
+                  <PackageCheck size={14} /> ② Collected
+                </button>
+              )
             )}
           </div>
         </div>
@@ -416,11 +554,12 @@ function RmuContent() {
         <div className="flex border-b border-slate-200 overflow-x-auto">
           {[
             { key: 'arrivals',   label: 'New Arrival Files',        count: stats.received },
-            { key: 'controller', label: 'Sent to Controller',       count: stats.withController },
+            { key: 'controller', label: 'To Controller',            count: stats.withController },
             { key: 'returned',   label: 'Returned from Controller', count: stats.pending },
             { key: 'status',     label: 'Check File Status',        count: null },
-            { key: 'comments',   label: 'Send Surveyor Comment',    count: null },
+            { key: 'comments',   label: 'Send Surveyor (Summary)',  count: null },
             { key: 'storage',    label: 'Storage',                  count: stats.inStorage },
+            { key: 'reports',    label: 'Reports',                  count: null },
           ].map(t => (
             <button
               key={t.key}
@@ -439,35 +578,58 @@ function RmuContent() {
           ))}
         </div>
 
-        {/* New Arrival Files — search & receive physically-submitted records */}
+        {/* New Arrival Files — Officer ADDS the file (no search): Set # + Receipt #, then OK */}
         {tab === 'arrivals' && (
           <>
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Search size={18} className="text-indigo-600" />
-                <h3 className="font-semibold text-slate-800">Find New Arrival (SR# · DSM# · Lot Number)</h3>
-              </div>
-              <form onSubmit={handleSearch} className="flex gap-2">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="e.g. 2/2026 or Lot 234 Tsabong"
-                  className={inp}
-                />
+              {!addOpen ? (
                 <button
-                  type="submit"
-                  disabled={searching}
-                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 shrink-0"
+                  onClick={() => setAddOpen(true)}
+                  className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition"
                 >
-                  {searching ? 'Searching...' : 'Search'}
+                  <Plus size={16} /> Add New Arrival
                 </button>
-              </form>
-              {searchResults && (
-                <div className="mt-4 space-y-3">
-                  {searchResults.length === 0
-                    ? <p className="text-slate-500 text-sm">No record found. Records must first be created through the Lot Allocator.</p>
-                    : searchResults.map(rec => renderRecord(rec, { fromSearch: true }))}
-                </div>
+              ) : (
+                <form onSubmit={handleAddNewArrival} className="space-y-4">
+                  <h3 className="font-semibold text-slate-800">Add New Arrival</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-1">Set # (SR#)</label>
+                      <input
+                        autoFocus
+                        value={addSr}
+                        onChange={(e) => setAddSr(e.target.value)}
+                        placeholder="e.g. 10/2026"
+                        className={inp}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-1">Receipt #</label>
+                      <input
+                        value={addReceipt}
+                        onChange={(e) => setAddReceipt(e.target.value)}
+                        placeholder="Enter Receipt Number"
+                        className={inp}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={addLoading}
+                      className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+                    >
+                      <CheckCircle size={16} /> {addLoading ? 'Submitting...' : 'OK / Receive'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddOpen(false); setAddSr(''); setAddReceipt('') }}
+                      className="border border-slate-200 text-slate-500 px-4 py-2.5 rounded-lg text-sm hover:bg-slate-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               )}
             </div>
 
@@ -475,26 +637,20 @@ function RmuContent() {
               <h3 className="font-semibold text-slate-800 mb-4">New Arrival Files (Received from Surveyors)</h3>
               {fetching ? <TableSkeleton rows={3} /> :
                 records.filter(r => r.rmuStatus === 'received_from_surveyor').length === 0
-                  ? <p className="text-slate-500 text-sm">No new arrival files. Search above to receive a record.</p>
+                  ? <p className="text-slate-500 text-sm">No new arrival files. Click &quot;Add New Arrival&quot; above to receive one.</p>
                   : <div className="space-y-3">{records.filter(r => r.rmuStatus === 'received_from_surveyor').map(rec => renderRecord(rec))}</div>}
             </div>
           </>
         )}
 
-        {/* Sent to Controller — all new (received) files visible with Send button */}
+        {/* To Controller — files ready to send, each with a quick Send button */}
         {tab === 'controller' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-            <h3 className="font-semibold text-slate-800 mb-4">Ready to Send (New Files)</h3>
+            <h3 className="font-semibold text-slate-800 mb-4">To Controller</h3>
             {fetching ? <TableSkeleton rows={2} /> :
               records.filter(r => r.rmuStatus === 'received_from_surveyor').length === 0
-                ? <p className="text-slate-500 text-sm mb-6">No new files ready to send.</p>
-                : <div className="space-y-3 mb-6">{records.filter(r => r.rmuStatus === 'received_from_surveyor').map(rec => renderRecord(rec))}</div>}
-
-            <h3 className="font-semibold text-slate-800 mb-4">Files Sent to Controller</h3>
-            {fetching ? <TableSkeleton rows={3} /> :
-              records.filter(r => r.rmuStatus === 'submitted_to_controller').length === 0
-                ? <p className="text-slate-500 text-sm">No files currently with the Controller.</p>
-                : <div className="space-y-3">{records.filter(r => r.rmuStatus === 'submitted_to_controller').map(rec => renderRecord(rec))}</div>}
+                ? <p className="text-slate-500 text-sm">No files ready to send.</p>
+                : <div className="space-y-3">{records.filter(r => r.rmuStatus === 'received_from_surveyor').map(rec => renderRecord(rec, { quickSend: true }))}</div>}
           </div>
         )}
 
@@ -544,7 +700,25 @@ function RmuContent() {
               <div className="mt-4 space-y-3">
                 {searchResults.length === 0
                   ? <p className="text-slate-500 text-sm">No record found for that number.</p>
-                  : searchResults.map(rec => renderRecord(rec, { fromSearch: true }))}
+                  : searchResults.map(rec => (
+                      <div key={rec._id} className="space-y-2">
+                        {renderRecord(rec, { fromSearch: true })}
+                        {buildTimeline(rec).length > 0 && (
+                          <div className="border border-slate-100 rounded-xl p-4 ml-2">
+                            <p className="text-xs font-medium text-slate-600 mb-2">Timeline</p>
+                            <ol className="space-y-1.5">
+                              {buildTimeline(rec).map((ev, i) => (
+                                <li key={i} className="text-xs text-slate-500 flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                                  <span className="font-medium text-slate-700">{ev.label}</span>
+                                  <span className="text-slate-400">— {new Date(ev.at).toLocaleString()}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                      </div>
+                    ))}
               </div>
             )}
           </div>
@@ -561,15 +735,77 @@ function RmuContent() {
           </div>
         )}
 
+        {/* Reports — RMU can query and filter their own records */}
+        {tab === 'reports' && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 space-y-5">
+            <div className="flex items-center gap-2">
+              <FileBarChart size={18} className="text-indigo-600" />
+              <h3 className="font-semibold text-slate-800">Reports</h3>
+            </div>
+            <form onSubmit={runReport} className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <select
+                value={reportFilters.status}
+                onChange={(e) => setReportFilters(f => ({ ...f, status: e.target.value }))}
+                className={inp}
+              >
+                <option value="">Any status</option>
+                {Object.entries(RMU_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <input
+                value={reportFilters.village}
+                onChange={(e) => setReportFilters(f => ({ ...f, village: e.target.value }))}
+                placeholder="Village"
+                className={inp}
+              />
+              <input
+                value={reportFilters.surveyorCode}
+                onChange={(e) => setReportFilters(f => ({ ...f, surveyorCode: e.target.value }))}
+                placeholder="Surveyor Code"
+                className={inp}
+              />
+              <input
+                type="date"
+                value={reportFilters.from}
+                onChange={(e) => setReportFilters(f => ({ ...f, from: e.target.value }))}
+                className={inp}
+                title="From date"
+              />
+              <input
+                type="date"
+                value={reportFilters.to}
+                onChange={(e) => setReportFilters(f => ({ ...f, to: e.target.value }))}
+                className={inp}
+                title="To date"
+              />
+              <button
+                type="submit"
+                disabled={reportLoading}
+                className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 sm:col-span-3 lg:col-span-1"
+              >
+                {reportLoading ? 'Running...' : 'Run Report'}
+              </button>
+            </form>
+
+            {reportResults && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500">{reportResults.length} record(s) found</p>
+                {reportResults.length === 0
+                  ? <p className="text-slate-500 text-sm">No records match those filters.</p>
+                  : reportResults.map(rec => renderRecord(rec, { fromSearch: true }))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Send Surveyor Comment — standalone (e.g. file could not be loaded on New Arrivals) */}
         {tab === 'comments' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 space-y-5">
             <div className="flex items-center gap-2">
               <MessageSquare size={18} className="text-orange-500" />
-              <h3 className="font-semibold text-slate-800">Send Surveyor Comment</h3>
+              <h3 className="font-semibold text-slate-800">Send Surveyor (Summary)</h3>
             </div>
             <p className="text-xs text-slate-500">
-              Send a message directly to a surveyor — for example when their file could not be loaded on New Arrivals.
+              If a file isn&apos;t OK, send the surveyor a summary note directly — for example when their file could not be loaded on New Arrivals.
             </p>
             <form onSubmit={handleSendStandalone} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

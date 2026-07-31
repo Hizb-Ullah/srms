@@ -76,13 +76,14 @@ export const getLastPlotNumber     = (village)    => API.get(`/lot-requests/vill
 
 // RMU (Records Management Unit)
 export const rmuSearchRecord         = (q)         => API.get('/rmu/search', { params: { q } })
-export const rmuGetRecords           = ()          => API.get('/rmu/records')
+export const rmuGetRecords           = (params)    => API.get('/rmu/records', { params })
+export const rmuAddNewArrival        = (data)      => API.post('/rmu/new-arrival', data)
 export const rmuGetPendingCollections = ()         => API.get('/rmu/pending-collections')
 export const rmuReceiveRecord        = (id, data)  => API.patch(`/rmu/${id}/receive`, data)
 export const rmuEnterReceipt         = (id, data)  => API.patch(`/rmu/${id}/receipt`, data)
 export const rmuSubmitToController   = (id)        => API.patch(`/rmu/${id}/submit-controller`)
 export const rmuReturnFromController = (id, data)  => API.patch(`/rmu/${id}/return`, data)
-export const rmuMarkCollected        = (id)        => API.patch(`/rmu/${id}/collect`)
+export const rmuMarkCollected        = (id, data)  => API.patch(`/rmu/${id}/collect`, data)
 export const rmuSendComment          = (id, data)  => API.patch(`/rmu/${id}/comment`, data)
 export const rmuSendStandaloneComment = (data)     => API.post('/rmu/comments', data)
 export const rmuGetStandaloneComments = ()         => API.get('/rmu/comments')
@@ -95,6 +96,9 @@ export const getAccountsQueue       = ()          => API.get('/accounts/queue')
 export const getAccountsCompleted   = ()          => API.get('/accounts/completed')
 export const acceptAccountsPayment  = (id, data)  => API.patch(`/accounts/${id}/accept`, data)
 export const acceptAccountsPaymentBySr = (data)   => API.post('/accounts/accept-by-sr', data)
+
+// Storage — read-only view of files RMU has dispatched to storage.
+export const getStorageFiles        = ()          => API.get('/storage/files')
 
 // Controller workflow
 export const getControllerFiles     = ()          => API.get('/controller/files')

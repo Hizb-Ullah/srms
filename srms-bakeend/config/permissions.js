@@ -24,7 +24,10 @@ const PERMISSIONS = {
     RMU: ['rmu_manage', 'view_lot_requests'],
     // Accounts — logs the Accounts-office receipt number against an already-
     // authorised request (bookkeeping only, per client's Accounts schema).
-    Accounts: ['accounts_manage']
+    Accounts: ['accounts_manage'],
+    // Storage — views files RMU has dispatched to storage (scanned online +
+    // hard copies filed) after collection.
+    Storage: ['storage_manage']
   },
   Private: {
     'Registered Land Surveyor': ['submit_lot_request', 'upload_pop', 'view_own_lot_requests', 'submit_shape_scratch'],

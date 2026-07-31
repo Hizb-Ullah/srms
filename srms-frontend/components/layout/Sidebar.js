@@ -79,11 +79,12 @@ const menuItems = {
   rmu: [
     { label: 'RMU Dashboard',           path: '/rmu',                    icon: Home },
     { label: 'New Arrival Files',       path: '/rmu?tab=arrivals',       icon: Inbox },
-    { label: 'Sent to Controller',      path: '/rmu?tab=controller',     icon: FolderOpen },
+    { label: 'To Controller',           path: '/rmu?tab=controller',     icon: FolderOpen },
     { label: 'Returned from Controller', path: '/rmu?tab=returned',      icon: ClipboardList },
     { label: 'Check File Status',       path: '/rmu?tab=status',         icon: Search },
-    { label: 'Send Surveyor Comment',   path: '/rmu?tab=comments',       icon: MessageSquare },
+    { label: 'Send Surveyor (Summary)', path: '/rmu?tab=comments',       icon: MessageSquare },
     { label: 'Storage',                 path: '/rmu?tab=storage',        icon: FolderOpen },
+    { label: 'Reports',                 path: '/rmu?tab=reports',        icon: FileBarChart },
   ],
   registration: [
     { label: 'Registration & Reservation', path: '/registration', icon: Home },
@@ -104,6 +105,9 @@ const menuItems = {
   ],
   accounts: [
     { label: 'Accounts', path: '/accounts', icon: Wallet },
+  ],
+  storage: [
+    { label: 'Storage', path: '/storage', icon: FolderOpen },
   ],
   director: [
     { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
@@ -169,7 +173,8 @@ export default function Sidebar() {
     'File Capturing': menuItems.capturing,
     'File Examination': menuItems.examination,
     'File Approval': menuItems.approval,
-    Accounts: menuItems.accounts
+    Accounts: menuItems.accounts,
+    Storage: menuItems.storage
   }
 
   const items = user.group === 'DSM' && user.subRole === 'Director'

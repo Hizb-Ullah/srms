@@ -26,7 +26,7 @@ const RMU_STATUS_LABELS = {
   received_from_surveyor: 'Received by RMU',
   submitted_to_controller: 'With Controller',
   returned_from_controller: 'Returned — Pending Collection',
-  collected: 'Collected',
+  collected: 'Received from RMU',
   in_storage: 'In Storage'
 }
 

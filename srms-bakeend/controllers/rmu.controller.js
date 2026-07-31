@@ -46,21 +46,98 @@ const searchRecord = async (req, res) => {
   }
 }
 
-// All records the RMU has touched (any rmuStatus set)
+// All records the RMU has touched (any rmuStatus set) — optionally filtered
+// for the Reports view (status, village, surveyor code, date range).
 const getRmuRecords = async (req, res) => {
   try {
-    const records = await LotAllocationRequest.find({ rmuStatus: { $ne: null } })
+    const { status, village, surveyorCode, from, to } = req.query
+    const filter = { rmuStatus: { $ne: null } }
+
+    if (status) filter.rmuStatus = status
+    if (village) filter.village = new RegExp(village.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    if (from || to) {
+      filter.updatedAt = {}
+      if (from) filter.updatedAt.$gte = new Date(from)
+      if (to) filter.updatedAt.$lte = new Date(new Date(to).setHours(23, 59, 59, 999))
+    }
+
+    let query = LotAllocationRequest.find(filter)
       .populate('requestedBy', 'name email surveyorCode')
       .sort({ updatedAt: -1 })
+
+    let records = await query
+
+    if (surveyorCode) {
+      const rx = new RegExp(surveyorCode.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      records = records.filter(r => rx.test(r.requestedBy?.surveyorCode || ''))
+    }
+
     res.status(200).json({ success: true, count: records.length, data: records })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
 }
 
-// Step 1 — RMU records a physically-received file from a surveyor
+// Step 1 — RMU adds a New Arrival. Per client: the Officer does not search —
+// they ADD the file by typing its Set # (SR#) and Receipt #, then click
+// OK/Receive. The record already exists (created via the Lot Number
+// request); this just looks it up by SR# and logs it as received, with the
+// receipt number, in one action. (Receipt number format isn't validated —
+// any non-empty value is accepted for now.)
+const addNewArrival = async (req, res) => {
+  try {
+    const { srNumber, receiptNumber } = req.body
+    if (!srNumber || !srNumber.trim()) {
+      return res.status(400).json({ success: false, message: 'Set # (SR#) is required' })
+    }
+    if (!receiptNumber || !receiptNumber.trim()) {
+      return res.status(400).json({ success: false, message: 'Receipt number is required' })
+    }
+
+    const record = await LotAllocationRequest.findOne({ 'plots.surveyRecordNumber': srNumber.trim() })
+    if (!record) return res.status(404).json({ success: false, message: 'No request found with that Set # (SR#)' })
+
+    if (record.rmuStatus) {
+      return res.status(400).json({ success: false, message: `Record already in RMU workflow (status: ${record.rmuStatus})` })
+    }
+
+    record.rmuStatus = 'received_from_surveyor'
+    record.rmuReceivedBy = req.user.id
+    record.rmuReceivedAt = new Date()
+    record.paymentReceiptNumber = receiptNumber.trim()
+    record.receiptEnteredBy = req.user.id
+    record.receiptEnteredAt = new Date()
+    await record.save()
+
+    await logAction({
+      action: 'RMU added a new arrival file',
+      performedBy: req.user.id,
+      role: req.user.subRole || req.user.role,
+      remarks: `Record ${record._id} (${record.village}) — SR# ${srNumber.trim()}, receipt ${receiptNumber.trim()}`
+    })
+
+    if (global.io && record.reviewedBy) {
+      global.io.to(record.reviewedBy.toString()).emit('lotRequestUpdate', {
+        requestId: record._id,
+        message: `Payment receipt ${receiptNumber.trim()} recorded by RMU — request marked as Paid`
+      })
+    }
+
+    res.status(200).json({ success: true, message: 'New arrival added — record received and receipt recorded', data: record })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Legacy id-based receive — superseded by addNewArrival (the Officer no
+// longer searches/selects a record first), kept mounted for API compatibility.
 const receiveRecord = async (req, res) => {
   try {
+    const { receiptNumber } = req.body
+    if (!receiptNumber || !receiptNumber.trim()) {
+      return res.status(400).json({ success: false, message: 'Receipt number is required to receive this record' })
+    }
+
     const record = await LotAllocationRequest.findById(req.params.id)
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' })
 
@@ -71,6 +148,9 @@ const receiveRecord = async (req, res) => {
     record.rmuStatus = 'received_from_surveyor'
     record.rmuReceivedBy = req.user.id
     record.rmuReceivedAt = new Date()
+    record.paymentReceiptNumber = receiptNumber.trim()
+    record.receiptEnteredBy = req.user.id
+    record.receiptEnteredAt = new Date()
     if (req.body.notes) record.rmuNotes = req.body.notes
     await record.save()
 
@@ -78,10 +158,17 @@ const receiveRecord = async (req, res) => {
       action: 'RMU recorded a physically-received file from surveyor',
       performedBy: req.user.id,
       role: req.user.subRole || req.user.role,
-      remarks: `Record ${record._id} (${record.village})`
+      remarks: `Record ${record._id} (${record.village}) — receipt ${receiptNumber.trim()}`
     })
 
-    res.status(200).json({ success: true, message: 'Record marked as received from surveyor', data: record })
+    if (global.io && record.reviewedBy) {
+      global.io.to(record.reviewedBy.toString()).emit('lotRequestUpdate', {
+        requestId: record._id,
+        message: `Payment receipt ${receiptNumber.trim()} recorded by RMU — request marked as Paid`
+      })
+    }
+
+    res.status(200).json({ success: true, message: 'Record received and receipt recorded — marked as Paid', data: record })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
@@ -232,10 +319,17 @@ const getPendingCollections = async (req, res) => {
   }
 }
 
-// Final step — surveyor collects the physical file
+// Final step — surveyor collects the physical file. Per client: the Officer
+// enters the surveyor's registration number to confirm identity before
+// clicking Collected.
 const markCollected = async (req, res) => {
   try {
-    const record = await LotAllocationRequest.findById(req.params.id)
+    const { surveyorCode } = req.body
+    if (!surveyorCode || !surveyorCode.trim()) {
+      return res.status(400).json({ success: false, message: "Surveyor's registration number is required to confirm collection" })
+    }
+
+    const record = await LotAllocationRequest.findById(req.params.id).populate('requestedBy', 'surveyorCode name')
     if (!record) return res.status(404).json({ success: false, message: 'Record not found' })
 
     if (record.rmuStatus !== 'returned_from_controller') {
@@ -243,6 +337,10 @@ const markCollected = async (req, res) => {
         success: false,
         message: `Record is not pending collection (current RMU status: ${record.rmuStatus || 'none'})`
       })
+    }
+
+    if ((record.requestedBy?.surveyorCode || '').trim().toLowerCase() !== surveyorCode.trim().toLowerCase()) {
+      return res.status(400).json({ success: false, message: "Registration number does not match this file's surveyor" })
     }
 
     record.rmuStatus = 'collected'
@@ -398,6 +496,7 @@ module.exports = {
   sendSurveyorComment,
   searchRecord,
   getRmuRecords,
+  addNewArrival,
   receiveRecord,
   enterReceiptNumber,
   submitToController,

@@ -3,6 +3,7 @@ const router = express.Router()
 const {
   searchRecord,
   getRmuRecords,
+  addNewArrival,
   receiveRecord,
   enterReceiptNumber,
   submitToController,
@@ -23,6 +24,7 @@ router.post('/comments',             authorizeCapability('rmu_manage'), sendStan
 router.get('/comments',              authorizeCapability('rmu_manage'), getStandaloneComments)
 router.get('/search',                authorizeCapability('rmu_manage'), searchRecord)
 router.get('/records',               authorizeCapability('rmu_manage'), getRmuRecords)
+router.post('/new-arrival',          authorizeCapability('rmu_manage'), addNewArrival)
 router.get('/pending-collections',   authorizeCapability('rmu_manage'), getPendingCollections)
 router.patch('/:id/receive',         authorizeCapability('rmu_manage'), receiveRecord)
 router.patch('/:id/receipt',         authorizeCapability('rmu_manage'), enterReceiptNumber)

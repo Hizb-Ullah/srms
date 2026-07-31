@@ -17,7 +17,8 @@ export default function DashboardRedirect() {
           'File Capturing': '/capturing',
           'File Examination': '/examination',
           'File Approval': '/approval',
-          Accounts: '/accounts'
+          Accounts: '/accounts',
+          Storage: '/storage'
         }
         if (user.group === 'Private' || user.group === 'LandBoard') router.push('/surveyor/dashboard')
         else if (user.group === 'DSM' && SUB_ROLE_PATHS[user.subRole]) router.push(SUB_ROLE_PATHS[user.subRole])
