@@ -64,10 +64,11 @@ const menuItems = {
     { label: 'Lot Requests',   path: '/lot-allocator',              icon: Inbox, complaintBadge: true },
     { label: 'Statistics',     path: '/lot-allocator?tab=stats',    icon: FileBarChart },
   ],
-  // Files Controller — runs the DSM file workflow (Director has this too).
+  // Files Controller — runs the DSM file workflow only. Per client: "Controller
+  // has got nothing to do with lot number request" — that's the Lot
+  // Allocator's domain alone, so no Dashboard/Lot Requests link here.
   filesController: [
-    { label: 'Dashboard',      path: '/lot-allocator',         icon: Home },
-    { label: 'Lot Requests',   path: '/lot-allocator',         icon: Inbox, complaintBadge: true },
+    { label: 'Dashboard',      path: '/controller',            icon: Home },
     { label: 'Shape File Scratch', path: '/controller?section=scratch', icon: FileUp },
     { label: 'Received from RMU',              path: '/controller?section=unassigned',   icon: Inbox },
     { label: 'File Registration & Reservation', path: '/controller?section=registration', icon: FolderOpen },

@@ -18,7 +18,10 @@ export default function DashboardRedirect() {
           'File Examination': '/examination',
           'File Approval': '/approval',
           Accounts: '/accounts',
-          Storage: '/storage'
+          Storage: '/storage',
+          // Controller has nothing to do with lot number requests — land them
+          // on their own workflow, not the Lot Allocator's Active Requests.
+          'Files Controller': '/controller'
         }
         if (user.group === 'Private' || user.group === 'LandBoard') router.push('/surveyor/dashboard')
         else if (user.group === 'DSM' && SUB_ROLE_PATHS[user.subRole]) router.push(SUB_ROLE_PATHS[user.subRole])

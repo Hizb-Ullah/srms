@@ -1,12 +1,23 @@
 // Permission map for the Lot Allocation feature's group + sub-role RBAC.
-// Director and Files Controller both get full ('*') authority over every DSM
-// sub-task, per client spec ("Director has identical authority to Files
-// Controller", "Files Controller has full authority to perform any task
-// available to every other DSM sub-account").
+// Director gets full ('*') authority over every DSM sub-task, including lot
+// number requests. Files Controller has full authority over every OTHER DSM
+// sub-task (RMU, Registration, Capturing, Examination, Approval, Accounts,
+// Storage) but explicitly NOT lot number requests — per client: "Controller
+// has got nothing to do with lot number request", that's the Lot Allocator's
+// domain alone.
 const PERMISSIONS = {
   DSM: {
     Director: ['*'],  // includes approve_users
-    'Files Controller': ['*'],
+    'Files Controller': [
+      'controller_workflow',
+      'register_file', 'reserve_file',
+      'capture_file',
+      'examine_file',
+      'approve_file',
+      'rmu_manage',
+      'accounts_manage',
+      'storage_manage'
+    ],
     'Lot Allocator': [
       'review_lot_request',
       'mark_payment_received',
