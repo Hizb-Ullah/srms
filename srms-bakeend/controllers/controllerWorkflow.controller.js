@@ -12,16 +12,19 @@ const logAction = require('../utils/auditLogger')
 // file to the next section or return it to the RMU.
 // ---------------------------------------------------------------------------
 
-// Valid transitions: currentStage → allowed next stages
+// Valid transitions: currentStage → allowed next stages.
+// The Controller only ever SENDS a file onward — the "received back" half of
+// each pair (sent_to_X → received_from_X) is NOT something the Controller
+// does themselves; that transition happens only when the section's own
+// sub-role (Registration/Capturing/Examination/Approval) takes their action
+// via fileSection.controller.js's takeSectionAction. The Controller has no
+// action to take while a stage is "sent_to_X" — they just wait for it to
+// come back.
 const TRANSITIONS = {
   received_unassigned:        ['sent_to_registration'],
-  sent_to_registration:       ['received_from_registration'],
   received_from_registration: ['sent_to_capturing'],
-  sent_to_capturing:          ['received_from_capturing'],
   received_from_capturing:    ['sent_to_examination'],
-  sent_to_examination:        ['received_from_examination'],
   received_from_examination:  ['sent_to_approval'],
-  sent_to_approval:           ['received_from_approval'],
   received_from_approval:     []
 }
 

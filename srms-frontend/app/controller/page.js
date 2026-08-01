@@ -51,16 +51,16 @@ const SECTIONS = [
   { key: 'returned',     label: 'Returned to RMU',             stages: ['returned_to_rmu'] },
 ]
 
-// Available actions per current stage: [label, targetStage, icon]
+// Available actions per current stage: [label, targetStage, icon].
+// While a stage is "sent_to_X", the Controller has nothing to do — that
+// file is sitting in the section's own queue, and only the section's
+// sub-role (via their own portal) can move it to "received_from_X". The
+// Controller only acts once it's actually back on their desk.
 const NEXT_ACTIONS = {
   received_unassigned:        [{ label: 'Send to Registration & Reservation', stage: 'sent_to_registration', icon: Send }],
-  sent_to_registration:       [{ label: 'Received from Registration', stage: 'received_from_registration', icon: Inbox }],
   received_from_registration: [{ label: 'Send to Capturing', stage: 'sent_to_capturing', icon: Send }],
-  sent_to_capturing:          [{ label: 'Received from Capturing', stage: 'received_from_capturing', icon: Inbox }],
   received_from_capturing:    [{ label: 'Send to Examination', stage: 'sent_to_examination', icon: Send }],
-  sent_to_examination:        [{ label: 'Received from Examination', stage: 'received_from_examination', icon: Inbox }],
   received_from_examination:  [{ label: 'Send to Approval', stage: 'sent_to_approval', icon: Send }],
-  sent_to_approval:           [{ label: 'Received from Approval', stage: 'received_from_approval', icon: Inbox }],
   received_from_approval:     []
 }
 
@@ -226,7 +226,12 @@ function ControllerWorkflowContent() {
           )}
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1 items-center">
+            {rec.controllerStage?.startsWith('sent_to_') && (
+              <p className="text-xs text-slate-500 italic">
+                Awaiting action from {STAGE_LABELS[rec.controllerStage]?.replace('Sent to ', '')} — no action needed here until it's sent back.
+              </p>
+            )}
             {(NEXT_ACTIONS[rec.controllerStage] || []).map(({ label, stage, icon: Icon }) => (
               <button
                 key={stage}
