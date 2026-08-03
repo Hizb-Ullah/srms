@@ -26,6 +26,14 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   },
   surveyorCode: { type: String },
   parentPlotNumber: { type: String },
+  // Subdivision/Sectional Title/General Plan only: was the parent plot
+  // already approved (does it already have a plot number)? If not, the
+  // parent has no pre-existing number to reference — it gets minted as the
+  // first plot number in this same batch, and the subdivision plots follow.
+  parentAlreadyApproved: { type: Boolean, default: true },
+  // Sectional Title only — replaces a unit count: the scheme itself gets one
+  // registration number, named by the surveyor (per client correction).
+  sectionalSchemeName: { type: String },
   subdivisionRange: {
     from: String,
     to: String

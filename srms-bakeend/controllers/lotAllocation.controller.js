@@ -27,6 +27,9 @@ const PARENT_PLOT_TYPES = ['subdivision', 'sectional_title', 'general_plan']
 const createLotRequest = async (req, res) => {
   try {
     const { village, requestType, parentPlotNumber, landBoard, cadastreNumber, locationType } = req.body
+    // Subdivision/Sectional Title/General Plan: has the parent plot already
+    // been approved (does it already have a plot number)? Defaults true.
+    const parentAlreadyApproved = req.body.parentAlreadyApproved !== false
 
     if (!village || !requestType) {
       return res.status(400).json({ success: false, message: 'Village and request type are required' })
@@ -48,28 +51,37 @@ const createLotRequest = async (req, res) => {
           message: `Multiple plot requests must be between 2 and ${MULTIPLE_PLOT_MAX} plots`
         })
       }
+    } else if (requestType === 'sectional_title') {
+      // Sectional Title has no unit count — the scheme itself gets one
+      // registration number, identified by its scheme name (per client).
+      plotCount = 1
+      if (!req.body.sectionalSchemeName || !req.body.sectionalSchemeName.trim()) {
+        return res.status(400).json({ success: false, message: 'Sectional Scheme Name is required' })
+      }
+      if (parentAlreadyApproved && !parentPlotNumber) {
+        return res.status(400).json({ success: false, message: 'Parent plot number is required for a sectional title request' })
+      }
     } else {
-      // subdivision / sectional title / general plan — all divide an
-      // existing registered plot into multiple new registrable parts.
+      // subdivision / general plan — divide an existing registered plot into
+      // multiple new registrable parts.
       plotCount = parseInt(req.body.plotCount, 10)
       if (!plotCount || plotCount < 1) {
         return res.status(400).json({
           success: false,
-          message: requestType === 'sectional_title'
-            ? 'Number of sectional units is required'
-            : requestType === 'general_plan'
-              ? 'Number of plots on the general plan is required'
-              : 'Subdivision plot count is required'
+          message: requestType === 'general_plan'
+            ? 'Number of plots on the general plan is required'
+            : 'Subdivision plot count is required'
         })
       }
-      if (!parentPlotNumber) {
+      // Parent plot number is only required if the parent has already been
+      // approved (has an existing number to reference). If not, the parent
+      // itself gets minted as the first plot number in this same batch.
+      if (parentAlreadyApproved && !parentPlotNumber) {
         return res.status(400).json({
           success: false,
-          message: requestType === 'sectional_title'
-            ? 'Parent plot number is required for a sectional title request'
-            : requestType === 'general_plan'
-              ? 'Parent plot number is required for a general plan request'
-              : 'Parent plot number is required for a subdivision request'
+          message: requestType === 'general_plan'
+            ? 'Parent plot number is required for a general plan request'
+            : 'Parent plot number is required for a subdivision request'
         })
       }
     }
@@ -88,10 +100,17 @@ const createLotRequest = async (req, res) => {
     // Allocator does, when reviewing the request.
     const deferPlotAssignment = isFirstForVillage && !PARENT_PLOT_TYPES.includes(requestType)
 
+    // If the parent plot was never approved (no existing number), it has no
+    // number to reference — it gets minted as the first plot number in this
+    // same batch, so one extra plot is generated: the parent itself, then
+    // the subdivision/sectional-title/general-plan plots follow.
+    const needsParentNumber = PARENT_PLOT_TYPES.includes(requestType) && !parentAlreadyApproved
+    const plotsToGenerate = needsParentNumber ? plotCount + 1 : plotCount
+
     let plots = []
     let plotNumbers = []
     if (!deferPlotAssignment) {
-      plotNumbers = await generatePlotNumbersForVillage(village, plotCount)
+      plotNumbers = await generatePlotNumbersForVillage(village, plotsToGenerate)
 
       if (requestType === 'general_plan') {
         // Per client: every plot on a General Plan shares the SAME SR#,
@@ -108,9 +127,9 @@ const createLotRequest = async (req, res) => {
           cadastreNumber: cadastreNumber || ''
         }))
       } else {
-        const srNumbers = await generateSurveyRecordNumbers(plotCount)
-        const dsmNumbers = await generateDsmNumbers(plotCount)
-        const osNumbers = await generateOsNumbers(plotCount)
+        const srNumbers = await generateSurveyRecordNumbers(plotsToGenerate)
+        const dsmNumbers = await generateDsmNumbers(plotsToGenerate)
+        const osNumbers = await generateOsNumbers(plotsToGenerate)
 
         plots = plotNumbers.map((plotNumber, i) => ({
           plotNumber,
@@ -137,11 +156,18 @@ const createLotRequest = async (req, res) => {
     }
 
     if (PARENT_PLOT_TYPES.includes(requestType)) {
-      requestData.parentPlotNumber = parentPlotNumber
+      requestData.parentAlreadyApproved = parentAlreadyApproved
+      // If the parent had no existing number, it was minted as the first
+      // plot number generated above — reference that instead of a manual entry.
+      requestData.parentPlotNumber = parentAlreadyApproved ? parentPlotNumber : plotNumbers[0]
       requestData.subdivisionRange = {
         from: plotNumbers[0],
         to: plotNumbers[plotNumbers.length - 1]
       }
+    }
+
+    if (requestType === 'sectional_title') {
+      requestData.sectionalSchemeName = req.body.sectionalSchemeName.trim()
     }
 
     const lotRequest = await LotAllocationRequest.create(requestData)

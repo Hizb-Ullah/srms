@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast'
 import { MapPin, Upload, ChevronDown, ChevronUp, MessageSquare, X, Home } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
-import { VILLAGES, VILLAGE_LOOKUP, LAND_BOARDS } from '@/lib/botswanaData'
+import { VILLAGES, VILLAGE_LOOKUP, LAND_AUTHORITIES } from '@/lib/botswanaData'
 
 
 // "approved" here is the Lot Allocator's own digital sign-off — shown as
@@ -56,7 +56,8 @@ export default function LotRequestsPage() {
 
   const [form, setForm] = useState({
     village: '', requestType: 'single_plot', plotCount: 2,
-    parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: ''
+    parentPlotNumber: '', parentAlreadyApproved: true, sectionalSchemeName: '',
+    landBoard: '', cadastreNumber: '', locationType: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -130,12 +131,17 @@ export default function LotRequestsPage() {
       }
       if (form.requestType === 'multiple_plot') payload.plotCount = form.plotCount
       if (PARENT_PLOT_TYPES.includes(form.requestType)) {
-        payload.plotCount = form.plotCount
-        payload.parentPlotNumber = form.parentPlotNumber
+        payload.parentAlreadyApproved = form.parentAlreadyApproved
+        if (form.parentAlreadyApproved) payload.parentPlotNumber = form.parentPlotNumber
+        if (form.requestType === 'sectional_title') {
+          payload.sectionalSchemeName = form.sectionalSchemeName
+        } else {
+          payload.plotCount = form.plotCount
+        }
       }
       await createLotRequest(payload)
       toast.success('Lot request submitted successfully')
-      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', landBoard: '', cadastreNumber: '', locationType: '' })
+      setForm({ village: '', requestType: 'single_plot', plotCount: 2, parentPlotNumber: '', parentAlreadyApproved: true, sectionalSchemeName: '', landBoard: '', cadastreNumber: '', locationType: '' })
       setLastPlot(null)
       setIsFirstVillage(false)
       fetchAll()
@@ -292,14 +298,25 @@ export default function LotRequestsPage() {
               </select>
             </div>
 
-            {(form.requestType === 'multiple_plot' || PARENT_PLOT_TYPES.includes(form.requestType)) && (
+            {form.requestType === 'sectional_title' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Sectional Scheme Name</label>
+                <input
+                  required
+                  value={form.sectionalSchemeName}
+                  onChange={(e) => setForm({ ...form, sectionalSchemeName: e.target.value })}
+                  placeholder="e.g. Kgale Court"
+                  className={inp}
+                />
+              </div>
+            )}
+
+            {(form.requestType === 'multiple_plot' || (PARENT_PLOT_TYPES.includes(form.requestType) && form.requestType !== 'sectional_title')) && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">
-                  {form.requestType === 'sectional_title'
-                    ? 'Number of Sectional Units'
-                    : form.requestType === 'general_plan'
-                      ? 'Number of Plots on General Plan'
-                      : `Number of Plots ${form.requestType === 'multiple_plot' ? '(2–5)' : '(sub-division count)'}`}
+                  {form.requestType === 'general_plan'
+                    ? 'Number of Plots on General Plan'
+                    : `Number of Plots ${form.requestType === 'multiple_plot' ? '(2–5)' : '(sub-division count)'}`}
                 </label>
                 <input
                   type="number"
@@ -314,27 +331,61 @@ export default function LotRequestsPage() {
             )}
 
             {PARENT_PLOT_TYPES.includes(form.requestType) && (
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Parent Plot Number</label>
-                <input
-                  required
-                  value={form.parentPlotNumber}
-                  onChange={(e) => setForm({ ...form, parentPlotNumber: e.target.value })}
-                  placeholder="e.g. Lot 5 Gaborone"
-                  className={inp}
-                />
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-600 mb-1">Has the parent plot already been approved (does it have a plot number)?</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, parentAlreadyApproved: true })}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      form.parentAlreadyApproved ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, parentAlreadyApproved: false, parentPlotNumber: '' })}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      !form.parentAlreadyApproved ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
             )}
 
+            {PARENT_PLOT_TYPES.includes(form.requestType) && (
+              form.parentAlreadyApproved ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">Parent Plot Number</label>
+                  <input
+                    required
+                    value={form.parentPlotNumber}
+                    onChange={(e) => setForm({ ...form, parentPlotNumber: e.target.value })}
+                    placeholder="e.g. Lot 5 Gaborone"
+                    className={inp}
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 self-end pb-2.5">
+                  {form.requestType === 'sectional_title'
+                    ? 'The parent plot has no number yet — it will automatically receive a new plot number, and the scheme will get its own number as well.'
+                    : `The parent plot has no number yet — it will automatically receive the first new plot number in this batch, followed by the ${form.plotCount || 0} plot(s) above.`}
+                </p>
+              )
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Land Board</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Land Authority</label>
               <select
                 value={form.landBoard}
                 onChange={(e) => setForm({ ...form, landBoard: e.target.value })}
                 className={inp}
               >
-                <option value="">— Select a Land Board —</option>
-                {LAND_BOARDS.map(lb => <option key={lb} value={lb}>{lb}</option>)}
+                <option value="">— Select Land Authority —</option>
+                {LAND_AUTHORITIES.map(la => <option key={la} value={la}>{la}</option>)}
               </select>
             </div>
 
@@ -421,8 +472,15 @@ export default function LotRequestsPage() {
                           <p className="text-xs text-slate-500">Surveyor Code: <span className="font-mono font-medium">{req.surveyorCode}</span></p>
                         )}
 
+                        {req.sectionalSchemeName && (
+                          <p className="text-xs text-slate-500">Sectional Scheme Name: <span className="font-medium">{req.sectionalSchemeName}</span></p>
+                        )}
+
                         {req.parentPlotNumber && (
-                          <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
+                          <p className="text-xs text-slate-500">
+                            Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span>
+                            {req.parentAlreadyApproved === false && <span className="text-slate-400"> (newly assigned in this batch)</span>}
+                          </p>
                         )}
 
                         {req.rmuComments?.length > 0 && (

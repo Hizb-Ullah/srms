@@ -597,18 +597,15 @@ export const VILLAGE_LOOKUP = VILLAGES.reduce((acc, v) => {
   return acc
 }, {})
 
-// The 12 Main Land Boards in Botswana — from "List of LAndboards.xlsx"
-export const LAND_BOARDS = [
-  "Rolong Land Board",
-  "Tati Land Board",
-  "Kweneng Land Board",
-  "Ngwaketse Land Board",
-  "Ghanzi Land Board",
-  "Chobe Land Board",
-  "Tawana Land Board",
-  "Kgalagadi Land Board",
-  "Ngwato Land Board",
-  "Kgatleng Land Board",
-  "Malete Land Board",
-  "Tlokweng Land Board",
+// Land Authorities (Administrative Districts) — per client correction: field
+// is "Land Authority", not "Land Board".
+export const LAND_AUTHORITIES = [
+  "Central Administrative District",
+  "Gaborone Administrative District",
+  "Selebi Phikwe Administrative District",
+  "Lobatse Administrative District",
+  "Jwaneng Administrative District",
+  "Francistown Administrative District",
+  "Ghanzi Administrative District",
+  "Chobe Administrative District",
 ]

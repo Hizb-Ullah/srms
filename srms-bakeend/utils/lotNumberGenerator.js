@@ -20,25 +20,25 @@ const generatePlotNumbersForVillage = async (village, count) => {
   return numbers
 }
 
-// Format: "10/2026" — matches Ted's diary SR#
+// Format: "S10/2026" — SR# always has an "S" in front (per client)
 const generateSurveyRecordNumbers = async (count) => {
   const year = new Date().getFullYear()
   const numbers = []
   for (let i = 0; i < count; i++) {
     const seq = await nextSequence(`sr-${year}`)
-    numbers.push(`${seq}/${year}`)
+    numbers.push(`S${seq}/${year}`)
   }
   return numbers
 }
 
-// Format: "114/2026" — matches Ted's diary DSM#
+// Format: "S114/2026" — DSM# also has an "S" in front (per client)
 // Each plot gets its own DSM# (confirmed by Ted: "each will have its own DSM")
 const generateDsmNumbers = async (count) => {
   const year = new Date().getFullYear()
   const numbers = []
   for (let i = 0; i < count; i++) {
     const seq = await nextSequence(`dsm-${year}`)
-    numbers.push(`${seq}/${year}`)
+    numbers.push(`S${seq}/${year}`)
   }
   return numbers
 }

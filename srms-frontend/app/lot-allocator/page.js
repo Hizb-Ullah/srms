@@ -231,6 +231,10 @@ function LotAllocatorContent() {
             </div>
           )}
 
+          {req.sectionalSchemeName && (
+            <p className="text-xs text-slate-500">Sectional Scheme Name: <span className="font-medium">{req.sectionalSchemeName}</span></p>
+          )}
+
           {req.parentPlotNumber && (
             <p className="text-xs text-slate-500">Parent plot: <span className="font-mono font-medium">{req.parentPlotNumber}</span></p>
           )}
