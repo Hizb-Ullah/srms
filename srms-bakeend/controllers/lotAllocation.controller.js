@@ -181,10 +181,13 @@ const createLotRequest = async (req, res) => {
         : `Plot number(s): ${plotNumbers.join(', ')}`
     })
 
-    // Step 3: Notify the Lot Allocator (in-app + email — client confirmed both)
+    // Step 3: Notify the Lot Allocator (in-app + email — client confirmed both).
+    // Files Controller is deliberately excluded — they have no access to lot
+    // number requests ("Controller has got nothing to do with lot number
+    // request"), so notifying them would just be a dead-end for them.
     const allocators = await User.find({
       group: 'DSM',
-      subRole: { $in: ['Lot Allocator', 'Files Controller', 'Director'] }
+      subRole: { $in: ['Lot Allocator', 'Director'] }
     })
 
     allocators.forEach((allocator) => {

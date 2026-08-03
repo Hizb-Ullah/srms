@@ -147,7 +147,10 @@ export default function Sidebar() {
         })
       }).catch(() => {})
     }
-    if (user?.group === 'DSM') {
+    // Complaints are about the lot-allocation pipeline — only the Lot
+    // Allocator/Director have access; Files Controller no longer does
+    // ("Controller has got nothing to do with lot number request").
+    if (user?.group === 'DSM' && (user?.subRole === 'Director' || user?.subRole === 'Lot Allocator')) {
       getAllComplaints().then(res => {
         setOpenComplaints(res.data.data.filter(c => c.status === 'open').length)
       }).catch(() => {})

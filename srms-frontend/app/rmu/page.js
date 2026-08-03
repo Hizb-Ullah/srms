@@ -448,29 +448,13 @@ function RmuContent() {
             )}
 
             {rec.rmuStatus === 'received_from_surveyor' && (
-              rec.group === 'Private' && !rec.paymentReceiptNumber ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled
-                    title="Private surveyor records require a payment receipt number before submission"
-                    className="flex items-center gap-1.5 bg-slate-200 text-slate-400 px-3 py-2 rounded-lg text-xs font-medium cursor-not-allowed"
-                  >
-                    <Send size={14} /> Submit to Controller
-                  </button>
-                  <span className="text-xs text-rose-600">Receipt # required for Private surveyors</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => act(rmuSubmitToController, rec._id, 'Record submitted to Controller')}
-                  disabled={actionLoading === rec._id}
-                  className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-50"
-                >
-                  <Send size={14} /> Submit to Controller
-                  {rec.group === 'LandBoard' && !rec.paymentReceiptNumber && (
-                    <span className="opacity-75">(payment optional)</span>
-                  )}
-                </button>
-              )
+              <button
+                onClick={() => act(rmuSubmitToController, rec._id, 'Record submitted to Controller')}
+                disabled={actionLoading === rec._id}
+                className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-50"
+              >
+                <Send size={14} /> Submit to Controller
+              </button>
             )}
 
             {rec.rmuStatus === 'submitted_to_controller' && (
@@ -630,7 +614,7 @@ function RmuContent() {
                         onChange={(e) => { setAddSr(e.target.value); setAddSrOpen(true) }}
                         onFocus={() => setAddSrOpen(true)}
                         onBlur={() => setTimeout(() => setAddSrOpen(false), 150)}
-                        placeholder="e.g. 10/2026"
+                        placeholder="e.g. S10/2026"
                         className={inp}
                         autoComplete="off"
                       />
@@ -732,7 +716,7 @@ function RmuContent() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. 2/2026 or Lot 234 Tsabong"
+                placeholder="e.g. S2/2026 or Lot 234 Tsabong"
                 className={inp}
               />
               <button

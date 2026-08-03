@@ -175,7 +175,7 @@ export default function LotRequestsPage() {
     setSendingComplaint(true)
     try {
       await submitComplaint(complaintModal, { message: complaintMsg })
-      toast.success('Complaint submitted to file controller')
+      toast.success('Complaint submitted to the Lot Allocator')
       setComplaintModal(null)
       setComplaintMsg('')
       fetchAll()
@@ -577,8 +577,8 @@ export default function LotRequestsPage() {
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-3">
-              Describe the issue with your file (e.g. no status update for a long time).
-              This will be sent to the file controller.
+              Describe the issue with your request (e.g. no status update for a long time).
+              This will be sent to the Lot Allocator.
             </p>
             <textarea
               value={complaintMsg}
