@@ -91,12 +91,16 @@ function RmuContent() {
   const [receiptFor, setReceiptFor] = useState(null)
   const [receiptNumber, setReceiptNumber] = useState('')
 
-  // New Arrival — Officer does not search; they ADD the file by typing its
-  // Set # (SR#) and Receipt #, then click OK/Receive.
+  // New Arrival — Officer types the Set # (SR#); since it's already loaded
+  // into the system from the Lot Number request, matching records appear as
+  // a dropdown to pick from (avoids typos like "02/2026" vs "2/2026"), then
+  // Receipt # + OK/Receive.
   const [addOpen, setAddOpen] = useState(false)
   const [addSr, setAddSr] = useState('')
   const [addReceipt, setAddReceipt] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [addSrSuggestions, setAddSrSuggestions] = useState([])
+  const [addSrOpen, setAddSrOpen] = useState(false)
 
   // Collected — Officer enters the surveyor's registration number to confirm
   // identity before the Collected/Dispatched action activates
@@ -155,6 +159,30 @@ function RmuContent() {
     }, 400)
     return () => clearTimeout(t)
   }, [query, tab])
+
+  // New Arrival: as the Officer types the Set # (SR#), show matching
+  // not-yet-received records to pick from — the record already exists from
+  // the Lot Number request, this just avoids typing the exact SR# by hand.
+  useEffect(() => {
+    if (!addOpen || addSr.trim().length < 2) { setAddSrSuggestions([]); return }
+    const t = setTimeout(async () => {
+      try {
+        const res = await rmuSearchRecord(addSr.trim())
+        const q = addSr.trim().toLowerCase()
+        const matches = []
+        res.data.data.forEach(rec => {
+          if (rec.rmuStatus) return // already received/in-workflow — not a "new arrival"
+          rec.plots?.forEach(p => {
+            if (p.surveyRecordNumber.toLowerCase().includes(q)) {
+              matches.push({ sr: p.surveyRecordNumber, village: rec.village, name: rec.requestedBy?.name })
+            }
+          })
+        })
+        setAddSrSuggestions(matches)
+      } catch { /* ignore while typing */ }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [addSr, addOpen])
 
   const handleSendStandalone = async (e) => {
     e.preventDefault()
@@ -242,6 +270,7 @@ function RmuContent() {
       setAddOpen(false)
       setAddSr('')
       setAddReceipt('')
+      setAddSrSuggestions([])
       await fetchAll()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed')
@@ -556,7 +585,7 @@ function RmuContent() {
             { key: 'arrivals',   label: 'New Arrival Files',        count: stats.received },
             { key: 'controller', label: 'To Controller',            count: stats.withController },
             { key: 'returned',   label: 'Returned from Controller', count: stats.pending },
-            { key: 'status',     label: 'Check File Status',        count: null },
+            { key: 'status',     label: 'Track File',               count: null },
             { key: 'comments',   label: 'Send Surveyor (Summary)',  count: null },
             { key: 'storage',    label: 'Storage',                  count: stats.inStorage },
             { key: 'reports',    label: 'Reports',                  count: null },
@@ -593,15 +622,33 @@ function RmuContent() {
                 <form onSubmit={handleAddNewArrival} className="space-y-4">
                   <h3 className="font-semibold text-slate-800">Add New Arrival</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-slate-600 mb-1">Set # (SR#)</label>
                       <input
                         autoFocus
                         value={addSr}
-                        onChange={(e) => setAddSr(e.target.value)}
+                        onChange={(e) => { setAddSr(e.target.value); setAddSrOpen(true) }}
+                        onFocus={() => setAddSrOpen(true)}
+                        onBlur={() => setTimeout(() => setAddSrOpen(false), 150)}
                         placeholder="e.g. 10/2026"
                         className={inp}
+                        autoComplete="off"
                       />
+                      {addSrOpen && addSrSuggestions.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {addSrSuggestions.map((s, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onMouseDown={() => { setAddSr(s.sr); setAddSrOpen(false); setAddSrSuggestions([]) }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                            >
+                              <span className="font-mono font-medium text-indigo-700">{s.sr}</span>
+                              <span className="text-slate-400"> — {s.village} · {s.name || '—'}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-600 mb-1">Receipt #</label>
@@ -623,7 +670,7 @@ function RmuContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setAddOpen(false); setAddSr(''); setAddReceipt('') }}
+                      onClick={() => { setAddOpen(false); setAddSr(''); setAddReceipt(''); setAddSrSuggestions([]) }}
                       className="border border-slate-200 text-slate-500 px-4 py-2.5 rounded-lg text-sm hover:bg-slate-50 transition"
                     >
                       Cancel
@@ -674,12 +721,12 @@ function RmuContent() {
           </>
         )}
 
-        {/* Check File Status — search any record and view its full status */}
+        {/* Track File — search any record and view its full status + timeline */}
         {tab === 'status' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Search size={18} className="text-indigo-600" />
-              <h3 className="font-semibold text-slate-800">Check File Status (SR# · DSM# · Lot Number)</h3>
+              <h3 className="font-semibold text-slate-800">Track File (SR# · DSM# · Lot Number)</h3>
             </div>
             <form onSubmit={handleSearch} className="flex gap-2">
               <input
@@ -693,7 +740,7 @@ function RmuContent() {
                 disabled={searching}
                 className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50 shrink-0"
               >
-                {searching ? 'Checking...' : 'Check Status'}
+                {searching ? 'Tracking...' : 'Track'}
               </button>
             </form>
             {searchResults && (

@@ -3,12 +3,15 @@ const router = express.Router()
 const {
   SECTIONS,
   getSectionQueue,
+  getMyAwaitingAction,
+  acceptSectionJob,
   getSectionCompleted,
   takeSectionAction,
   sendSectionComment
 } = require('../controllers/fileSection.controller')
 const { protect } = require('../middleware/auth.middleware')
 const { hasCapability } = require('../config/permissions')
+const upload = require('../middleware/upload.middleware')
 
 router.use(protect)
 
@@ -28,8 +31,10 @@ const authorizeSection = (req, res, next) => {
 }
 
 router.get('/:section/queue',         authorizeSection, getSectionQueue)
+router.get('/:section/my-queue',      authorizeSection, getMyAwaitingAction)
+router.patch('/:section/:id/accept',  authorizeSection, acceptSectionJob)
 router.get('/:section/completed',     authorizeSection, getSectionCompleted)
 router.patch('/:section/:id/action',  authorizeSection, takeSectionAction)
-router.patch('/:section/:id/comment', authorizeSection, sendSectionComment)
+router.patch('/:section/:id/comment', authorizeSection, upload.single('file'), sendSectionComment)
 
 module.exports = router

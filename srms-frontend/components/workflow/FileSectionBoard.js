@@ -1,42 +1,66 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { getSectionQueue, getSectionCompleted, takeSectionAction, sendSectionComment } from '@/lib/api'
+import { useState, useEffect, useRef } from 'react'
+import { getSectionQueue, getMySectionQueue, acceptSectionJob, getSectionCompleted, takeSectionAction, sendSectionComment } from '@/lib/api'
 import toast from 'react-hot-toast'
 import {
-  Inbox, CheckCircle2, ChevronDown, ChevronUp, MessageSquare, X, CheckCircle, XCircle
+  Inbox, CheckCircle2, ChevronDown, ChevronUp, MessageSquare, X, CheckCircle, XCircle, Hand, Paperclip
 } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 
 // Shared dashboard for the four DSM file-section sub-roles (Registration &
-// Reservation / Capturing / Examination / Approval). Each section shows the
-// files the Controller sent it that aren't yet actioned, lets the officer
-// take their action (with a Pass/Fail choice for Examination & Approval),
-// and lets them send a comment to the surveyor about the file.
+// Reservation / Capturing / Examination / Approval). Files the Controller
+// sends land in a shared, unclaimed queue — any officer in the section can
+// click "Accept Job" to claim one, which moves it to their own "Awaiting
+// Action" (no one else can act on it once claimed). They then take their
+// action (with a Pass/Fail choice for Examination & Approval), or send the
+// surveyor a comment, optionally with an attached file.
 export default function FileSectionBoard({ section, title, actionLabel, hasOutcome }) {
-  const [queue, setQueue] = useState([])
+  const [available, setAvailable] = useState([])
+  const [myJobs, setMyJobs] = useState([])
   const [completed, setCompleted] = useState([])
   const [fetching, setFetching] = useState(true)
-  const [tab, setTab] = useState('queue')
+  const [tab, setTab] = useState('available')
   const [expanded, setExpanded] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
 
   const [commentFor, setCommentFor] = useState(null)
   const [commentMsg, setCommentMsg] = useState('')
+  const [commentFile, setCommentFile] = useState(null)
   const [sendingComment, setSendingComment] = useState(false)
+  const fileRef = useRef()
 
   useEffect(() => { fetchAll() }, [section])
 
   const fetchAll = async () => {
     setFetching(true)
     try {
-      const [qRes, cRes] = await Promise.all([getSectionQueue(section), getSectionCompleted(section)])
-      setQueue(qRes.data.data)
+      const [aRes, mRes, cRes] = await Promise.all([
+        getSectionQueue(section),
+        getMySectionQueue(section),
+        getSectionCompleted(section)
+      ])
+      setAvailable(aRes.data.data)
+      setMyJobs(mRes.data.data)
       setCompleted(cRes.data.data)
     } catch {
       toast.error('Failed to load files')
     } finally {
       setFetching(false)
+    }
+  }
+
+  const doAccept = async (id) => {
+    setActionLoading(id)
+    try {
+      await acceptSectionJob(section, id)
+      toast.success('Job accepted — moved to your Awaiting Action')
+      setTab('mine')
+      fetchAll()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -57,10 +81,14 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
     if (!commentMsg.trim()) return toast.error('Comment message is required')
     setSendingComment(true)
     try {
-      await sendSectionComment(section, commentFor, { message: commentMsg })
+      const fd = new FormData()
+      fd.append('message', commentMsg)
+      if (commentFile) fd.append('file', commentFile)
+      await sendSectionComment(section, commentFor, fd)
       toast.success('Comment sent to surveyor')
       setCommentFor(null)
       setCommentMsg('')
+      setCommentFile(null)
       fetchAll()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send comment')
@@ -69,7 +97,7 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
     }
   }
 
-  const renderFile = (rec, { isQueue }) => (
+  const renderFile = (rec, { view }) => (
     <div key={rec._id} className="border border-slate-100 rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded(expanded === rec._id ? null : rec._id)}
@@ -78,7 +106,7 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
         <div className="flex items-center gap-3 flex-wrap">
           <span className="font-medium text-sm text-slate-800">{rec.village}</span>
           <span className="text-xs text-slate-400">{rec.requestedBy?.name || '—'}</span>
-          {!isQueue && hasOutcome && rec[section === 'examination' ? 'examinationOutcome' : 'approvalOutcome'] && (
+          {view === 'completed' && hasOutcome && rec[section === 'examination' ? 'examinationOutcome' : 'approvalOutcome'] && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
               rec[section === 'examination' ? 'examinationOutcome' : 'approvalOutcome'] === 'pass'
                 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
@@ -86,9 +114,14 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
               {rec[section === 'examination' ? 'examinationOutcome' : 'approvalOutcome'] === 'pass' ? 'Passed' : 'Failed'}
             </span>
           )}
-          {!isQueue && (
+          {view === 'completed' && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
               Returned to Controller
+            </span>
+          )}
+          {view === 'mine' && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+              Accepted by you
             </span>
           )}
         </div>
@@ -115,8 +148,35 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
             <p className="text-xs text-slate-500">Surveyor Code: <span className="font-mono font-medium">{rec.requestedBy.surveyorCode}</span></p>
           )}
 
+          {rec.controllerComments?.filter(c => c.stage === section).length > 0 && (
+            <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-xs space-y-1">
+              <p className="font-medium text-orange-700">Comments sent to surveyor</p>
+              {rec.controllerComments.filter(c => c.stage === section).map((c, i) => (
+                <p key={i} className="text-slate-600">
+                  {c.message}
+                  {c.fileUrl && (
+                    <a href={c.fileUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline ml-2">
+                      {c.fileName || 'Attachment'}
+                    </a>
+                  )}
+                  <span className="text-slate-400"> · {new Date(c.sentAt).toLocaleDateString()}</span>
+                </p>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2 pt-1">
-            {isQueue && !hasOutcome && (
+            {view === 'available' && (
+              <button
+                onClick={() => doAccept(rec._id)}
+                disabled={actionLoading === rec._id}
+                className="flex items-center gap-1.5 bg-indigo-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-indigo-700 active:scale-[0.98] transition disabled:opacity-50"
+              >
+                <Hand size={14} /> Accept Job
+              </button>
+            )}
+
+            {view === 'mine' && !hasOutcome && (
               <button
                 onClick={() => doAction(rec._id)}
                 disabled={actionLoading === rec._id}
@@ -126,7 +186,7 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
               </button>
             )}
 
-            {isQueue && hasOutcome && (
+            {view === 'mine' && hasOutcome && (
               <>
                 <button
                   onClick={() => doAction(rec._id, 'pass')}
@@ -146,7 +206,7 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
             )}
 
             <button
-              onClick={() => { setCommentFor(rec._id); setCommentMsg('') }}
+              onClick={() => { setCommentFor(rec._id); setCommentMsg(''); setCommentFile(null) }}
               className="flex items-center gap-1.5 border border-orange-300 text-orange-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-orange-50 transition"
             >
               <MessageSquare size={14} /> Send Surveyor Comment
@@ -157,49 +217,52 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
     </div>
   )
 
+  const TABS = [
+    { key: 'available', label: 'Available', list: available, color: 'bg-amber-50 text-amber-700', icon: Inbox },
+    { key: 'mine', label: 'My Awaiting Action', list: myJobs, color: 'bg-indigo-50 text-indigo-700', icon: Hand },
+    { key: 'completed', label: 'Completed (with Controller)', list: completed, color: 'bg-emerald-50 text-emerald-700', icon: CheckCircle2 }
+  ]
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={() => setTab('queue')}
-          className={`rounded-xl p-5 flex items-center gap-4 text-left border-2 transition ${
-            tab === 'queue' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-transparent bg-amber-50 text-amber-700'
-          }`}
-        >
-          <Inbox size={24} />
-          <div>
-            <p className="text-xs font-medium opacity-75">Awaiting Action</p>
-            <p className="text-3xl font-bold">{fetching ? '—' : queue.length}</p>
-          </div>
-        </button>
-        <button
-          onClick={() => setTab('completed')}
-          className={`rounded-xl p-5 flex items-center gap-4 text-left border-2 transition ${
-            tab === 'completed' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-transparent bg-emerald-50 text-emerald-700'
-          }`}
-        >
-          <CheckCircle2 size={24} />
-          <div>
-            <p className="text-xs font-medium opacity-75">Completed (with Controller)</p>
-            <p className="text-3xl font-bold">{fetching ? '—' : completed.length}</p>
-          </div>
-        </button>
+      <div className="grid grid-cols-3 gap-4">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`rounded-xl p-5 flex items-center gap-4 text-left border-2 transition ${
+              tab === t.key ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : `border-transparent ${t.color}`
+            }`}
+          >
+            <t.icon size={24} />
+            <div>
+              <p className="text-xs font-medium opacity-75">{t.label}</p>
+              <p className="text-3xl font-bold">{fetching ? '—' : t.list.length}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
         <h3 className="font-semibold text-slate-800 mb-4">
-          {tab === 'queue' ? `Files Received from Controller (not yet actioned) — ${title}` : `Completed — ${title}`}
+          {tab === 'available' ? `Received from Controller — Available to Accept — ${title}`
+            : tab === 'mine' ? `My Awaiting Action — ${title}`
+            : `Completed — ${title}`}
         </h3>
         {fetching ? (
           <TableSkeleton rows={3} />
-        ) : tab === 'queue' ? (
-          queue.length === 0
-            ? <p className="text-slate-500 text-sm">No files waiting in this section.</p>
-            : <div className="space-y-3">{queue.map(rec => renderFile(rec, { isQueue: true }))}</div>
+        ) : tab === 'available' ? (
+          available.length === 0
+            ? <p className="text-slate-500 text-sm">No unclaimed files waiting in this section.</p>
+            : <div className="space-y-3">{available.map(rec => renderFile(rec, { view: 'available' }))}</div>
+        ) : tab === 'mine' ? (
+          myJobs.length === 0
+            ? <p className="text-slate-500 text-sm">You haven&apos;t accepted any jobs yet — check the Available tab.</p>
+            : <div className="space-y-3">{myJobs.map(rec => renderFile(rec, { view: 'mine' }))}</div>
         ) : (
           completed.length === 0
             ? <p className="text-slate-500 text-sm">No completed files yet.</p>
-            : <div className="space-y-3">{completed.map(rec => renderFile(rec, { isQueue: false }))}</div>
+            : <div className="space-y-3">{completed.map(rec => renderFile(rec, { view: 'completed' }))}</div>
         )}
       </div>
 
@@ -223,6 +286,19 @@ export default function FileSectionBoard({ section, title, actionLabel, hasOutco
               placeholder="Write your comment..."
               className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
             />
+            <input
+              type="file"
+              ref={fileRef}
+              className="hidden"
+              onChange={(e) => setCommentFile(e.target.files[0])}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current.click()}
+              className="mt-3 flex items-center gap-1.5 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs hover:bg-slate-50 transition"
+            >
+              <Paperclip size={14} /> {commentFile ? commentFile.name : 'Attach a file (optional)'}
+            </button>
             <div className="flex gap-2 mt-4">
               <button
                 onClick={handleSendComment}

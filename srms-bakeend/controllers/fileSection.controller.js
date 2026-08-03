@@ -1,5 +1,6 @@
 const LotAllocationRequest = require('../models/LotAllocationRequest.model')
 const logAction = require('../utils/auditLogger')
+const { getFileUrl } = require('../utils/fileUrl')
 
 // ---------------------------------------------------------------------------
 // File section sub-role dashboards (per client's Controller workflow schema)
@@ -10,6 +11,13 @@ const logAction = require('../utils/auditLogger')
 // their queue, takes their action, and it lands back on the Controller's
 // desk ("received back") for the Controller to send onward or return to RMU.
 // Examination and Approval additionally record a Pass / Fail outcome.
+//
+// Job claiming: since more than one officer can work the same section, a
+// file sitting in the section's shared queue is up for grabs — whoever
+// clicks "Accept Job" claims it (sectionClaimedBy), and it moves to their
+// own "Awaiting Action" list. No one else can act on it until it's actioned
+// (which clears the claim) or the Controller re-sends it to a new section
+// (which also clears the claim).
 // ---------------------------------------------------------------------------
 
 const SECTIONS = {
@@ -47,16 +55,70 @@ const SECTIONS = {
 
 const getSectionConfig = (key) => SECTIONS[key]
 
-// Files received from the Controller for this section, not yet actioned
+// Files received from the Controller for this section, not yet claimed by
+// anyone — available for any officer in this section to accept.
 const getSectionQueue = async (req, res) => {
   try {
     const config = getSectionConfig(req.params.section)
     if (!config) return res.status(404).json({ success: false, message: 'Unknown section' })
 
-    const files = await LotAllocationRequest.find({ controllerStage: config.queueStage })
+    const files = await LotAllocationRequest.find({ controllerStage: config.queueStage, sectionClaimedBy: null })
       .populate('requestedBy', 'name email surveyorCode')
       .sort({ controllerStageUpdatedAt: -1 })
     res.status(200).json({ success: true, count: files.length, data: files })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Files THIS officer has personally accepted — their own "Awaiting Action"
+const getMyAwaitingAction = async (req, res) => {
+  try {
+    const config = getSectionConfig(req.params.section)
+    if (!config) return res.status(404).json({ success: false, message: 'Unknown section' })
+
+    const files = await LotAllocationRequest.find({ controllerStage: config.queueStage, sectionClaimedBy: req.user.id })
+      .populate('requestedBy', 'name email surveyorCode')
+      .sort({ sectionClaimedAt: -1 })
+    res.status(200).json({ success: true, count: files.length, data: files })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+// Accept Job / Receive Job — claims an unclaimed file for this officer.
+// Other officers in the same section can no longer act on it.
+const acceptSectionJob = async (req, res) => {
+  try {
+    const config = getSectionConfig(req.params.section)
+    if (!config) return res.status(404).json({ success: false, message: 'Unknown section' })
+
+    const record = await LotAllocationRequest.findById(req.params.id)
+    if (!record) return res.status(404).json({ success: false, message: 'Record not found' })
+
+    if (record.controllerStage !== config.queueStage) {
+      return res.status(400).json({
+        success: false,
+        message: `File is not awaiting action in ${config.label} (current stage: ${record.controllerStage || 'none'})`
+      })
+    }
+
+    if (record.sectionClaimedBy && record.sectionClaimedBy.toString() !== req.user.id) {
+      return res.status(400).json({ success: false, message: 'This job has already been accepted by another officer' })
+    }
+
+    record.sectionClaimedBy = req.user.id
+    record.sectionClaimedAt = new Date()
+    await record.save()
+
+    await logAction({
+      action: `${config.label}: job accepted by officer`,
+      performedBy: req.user.id,
+      role: req.user.subRole || req.user.role,
+      remarks: `Record ${record._id} (${record.village})`
+    })
+
+    res.status(200).json({ success: true, message: 'Job accepted — moved to your Awaiting Action', data: record })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
@@ -79,7 +141,8 @@ const getSectionCompleted = async (req, res) => {
 
 // Take this section's action on a file — moves it back to the Controller
 // ("Return to Controller" in the client's diagram). Examination / Approval
-// require a pass/fail outcome.
+// require a pass/fail outcome. Only the officer who accepted this job may
+// take the action.
 const takeSectionAction = async (req, res) => {
   try {
     const config = getSectionConfig(req.params.section)
@@ -95,6 +158,10 @@ const takeSectionAction = async (req, res) => {
       })
     }
 
+    if (!record.sectionClaimedBy || record.sectionClaimedBy.toString() !== req.user.id) {
+      return res.status(400).json({ success: false, message: 'You must accept this job before you can action it' })
+    }
+
     if (config.hasOutcome) {
       const { outcome } = req.body
       if (!['pass', 'fail'].includes(outcome)) {
@@ -106,6 +173,8 @@ const takeSectionAction = async (req, res) => {
     record.controllerStage = config.doneStage
     record.controllerStageUpdatedAt = new Date()
     record.controllerHistory.push({ stage: config.doneStage, by: req.user.id, at: new Date() })
+    record.sectionClaimedBy = null
+    record.sectionClaimedAt = null
     await record.save()
 
     await logAction({
@@ -121,7 +190,9 @@ const takeSectionAction = async (req, res) => {
   }
 }
 
-// Send a comment to the surveyor about this file from within a section
+// Send a comment to the surveyor about this file from within a section —
+// optionally with an attached file (per client, added for Capturing but
+// available to every section since they share this same endpoint)
 const sendSectionComment = async (req, res) => {
   try {
     const config = getSectionConfig(req.params.section)
@@ -138,6 +209,8 @@ const sendSectionComment = async (req, res) => {
     record.controllerComments.push({
       stage: req.params.section,
       message: message.trim(),
+      fileUrl: req.file ? getFileUrl(req, req.file.filename) : '',
+      fileName: req.file ? req.file.originalname : '',
       sentBy: req.user.id,
       sentAt: new Date()
     })
@@ -163,4 +236,12 @@ const sendSectionComment = async (req, res) => {
   }
 }
 
-module.exports = { SECTIONS, getSectionQueue, getSectionCompleted, takeSectionAction, sendSectionComment }
+module.exports = {
+  SECTIONS,
+  getSectionQueue,
+  getMyAwaitingAction,
+  acceptSectionJob,
+  getSectionCompleted,
+  takeSectionAction,
+  sendSectionComment
+}

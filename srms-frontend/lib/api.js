@@ -107,9 +107,11 @@ export const returnFileToRmu        = (id, data)  => API.patch(`/controller/${id
 
 // File sections (Registration & Reservation / Capturing / Examination / Approval)
 export const getSectionQueue        = (section)        => API.get(`/file-sections/${section}/queue`)
+export const getMySectionQueue      = (section)        => API.get(`/file-sections/${section}/my-queue`)
+export const acceptSectionJob       = (section, id)     => API.patch(`/file-sections/${section}/${id}/accept`)
 export const getSectionCompleted    = (section)        => API.get(`/file-sections/${section}/completed`)
 export const takeSectionAction      = (section, id, data) => API.patch(`/file-sections/${section}/${id}/action`, data)
-export const sendSectionComment     = (section, id, data) => API.patch(`/file-sections/${section}/${id}/comment`, data)
+export const sendSectionComment     = (section, id, data) => API.patch(`/file-sections/${section}/${id}/comment`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 
 // Shape File Scratch — data consistency pre-check before submitting a
 // layout. Goes directly to the File Controller (not RMU), Controller sends

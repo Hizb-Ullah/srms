@@ -89,6 +89,9 @@ const moveStage = async (req, res) => {
     record.controllerStage = stage
     record.controllerStageUpdatedAt = new Date()
     record.controllerHistory.push({ stage, by: req.user.id, at: new Date() })
+    // Sending into a new section's queue opens a fresh, unclaimed slate
+    record.sectionClaimedBy = null
+    record.sectionClaimedAt = null
     await record.save()
 
     await logAction({
@@ -129,6 +132,8 @@ const returnToRmu = async (req, res) => {
     record.controllerStage = 'returned_to_rmu'
     record.controllerStageUpdatedAt = new Date()
     record.controllerHistory.push({ stage: 'returned_to_rmu', by: req.user.id, at: new Date() })
+    record.sectionClaimedBy = null
+    record.sectionClaimedAt = null
 
     // Hand back into the RMU flow — becomes a pending-collection file
     record.rmuStatus = 'returned_from_controller'

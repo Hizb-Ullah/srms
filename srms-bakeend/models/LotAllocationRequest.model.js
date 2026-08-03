@@ -108,6 +108,13 @@ const lotAllocationRequestSchema = new mongoose.Schema({
     by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     at: { type: Date, default: Date.now }
   }],
+  // Job-claiming for the current file-section queue (Registration/Capturing/
+  // Examination/Approval): since more than one officer can work a section,
+  // whoever clicks "Accept Job" locks it to themselves — it moves to their
+  // own "Awaiting Action" and no one else can act on it. Reset whenever the
+  // Controller sends the file to a new section.
+  sectionClaimedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  sectionClaimedAt: { type: Date, default: null },
   rmuNotes: { type: String, default: '' },
   // Comments sent by RMU to the surveyor about this file
   rmuComments: [{
@@ -126,6 +133,8 @@ const lotAllocationRequestSchema = new mongoose.Schema({
   controllerComments: [{
     stage: { type: String, enum: ['registration', 'capturing', 'examination', 'approval'] },
     message: { type: String, required: true },
+    fileUrl: { type: String, default: '' },
+    fileName: { type: String, default: '' },
     sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     sentAt: { type: Date, default: Date.now }
   }],
