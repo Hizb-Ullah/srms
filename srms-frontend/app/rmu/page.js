@@ -716,7 +716,7 @@ function RmuContent() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. S2/2026 or Lot 234 Tsabong"
+                placeholder="e.g. 2/2026 or Lot 234 Tsabong"
                 className={inp}
               />
               <button
