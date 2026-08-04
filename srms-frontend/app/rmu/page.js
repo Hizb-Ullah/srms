@@ -614,7 +614,7 @@ function RmuContent() {
                         onChange={(e) => { setAddSr(e.target.value); setAddSrOpen(true) }}
                         onFocus={() => setAddSrOpen(true)}
                         onBlur={() => setTimeout(() => setAddSrOpen(false), 150)}
-                        placeholder="e.g. S10/2026"
+                        placeholder="e.g. 10/2026"
                         className={inp}
                         autoComplete="off"
                       />
