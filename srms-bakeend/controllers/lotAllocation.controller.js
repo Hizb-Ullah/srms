@@ -127,8 +127,11 @@ const createLotRequest = async (req, res) => {
           cadastreNumber: cadastreNumber || ''
         }))
       } else {
-        const srNumbers = await generateSurveyRecordNumbers(plotsToGenerate)
-        const dsmNumbers = await generateDsmNumbers(plotsToGenerate)
+        // Per client: the "S" prefix on SR#/DSM# is used ONLY for Sectional
+        // Title requests — every other type keeps the plain "10/2026" format.
+        const srDsmPrefix = requestType === 'sectional_title' ? 'S' : ''
+        const srNumbers = await generateSurveyRecordNumbers(plotsToGenerate, srDsmPrefix)
+        const dsmNumbers = await generateDsmNumbers(plotsToGenerate, srDsmPrefix)
         const osNumbers = await generateOsNumbers(plotsToGenerate)
 
         plots = plotNumbers.map((plotNumber, i) => ({

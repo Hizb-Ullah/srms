@@ -20,25 +20,27 @@ const generatePlotNumbersForVillage = async (village, count) => {
   return numbers
 }
 
-// Format: "S10/2026" — SR# always has an "S" in front (per client)
-const generateSurveyRecordNumbers = async (count) => {
+// Format: "10/2026" — or "S10/2026" when prefix='S'. Per client: the "S"
+// prefix is used ONLY for Sectional Title requests, every other request
+// type keeps the plain "10/2026" format.
+const generateSurveyRecordNumbers = async (count, prefix = '') => {
   const year = new Date().getFullYear()
   const numbers = []
   for (let i = 0; i < count; i++) {
     const seq = await nextSequence(`sr-${year}`)
-    numbers.push(`S${seq}/${year}`)
+    numbers.push(`${prefix}${seq}/${year}`)
   }
   return numbers
 }
 
-// Format: "S114/2026" — DSM# also has an "S" in front (per client)
+// Format: "114/2026" — or "S114/2026" when prefix='S' (Sectional Title only).
 // Each plot gets its own DSM# (confirmed by Ted: "each will have its own DSM")
-const generateDsmNumbers = async (count) => {
+const generateDsmNumbers = async (count, prefix = '') => {
   const year = new Date().getFullYear()
   const numbers = []
   for (let i = 0; i < count; i++) {
     const seq = await nextSequence(`dsm-${year}`)
-    numbers.push(`S${seq}/${year}`)
+    numbers.push(`${prefix}${seq}/${year}`)
   }
   return numbers
 }
