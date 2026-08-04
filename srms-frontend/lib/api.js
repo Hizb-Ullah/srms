@@ -100,6 +100,10 @@ export const acceptAccountsPaymentBySr = (data)   => API.post('/accounts/accept-
 // Storage — read-only view of files RMU has dispatched to storage.
 export const getStorageFiles        = ()          => API.get('/storage/files')
 
+// Request Framing Data — surveyor enters Lot Number + Village.
+export const submitFramingDataRequest = (data)    => API.post('/framing-data', data)
+export const getMyFramingDataRequests = ()         => API.get('/framing-data/my')
+
 // Controller workflow
 export const getControllerFiles     = ()          => API.get('/controller/files')
 export const moveControllerStage    = (id, data)  => API.patch(`/controller/${id}/stage`, data)

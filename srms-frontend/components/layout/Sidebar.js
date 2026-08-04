@@ -55,6 +55,7 @@ const menuItems = {
     ]},
     { label: 'Lot Requests', path: '/surveyor/lot-requests', icon: MapPin },
     { label: 'Request Shape File Scratch', path: '/surveyor/shape-scratch', icon: FileUp },
+    { label: 'Request Framing Data', path: '/surveyor/framing-data', icon: Hash },
   ],
   // DSM group — Lot Allocator sub-role only does plot allocation; per client
   // ("lot allocator has got nothing to do with other services... they cant

@@ -61,6 +61,7 @@ app.use('/api/file-sections', require('./routes/fileSection.routes'))
 app.use('/api/shape-scratch', require('./routes/shapeFileScratch.routes'))
 app.use('/api/accounts', require('./routes/accounts.routes'))
 app.use('/api/storage', require('./routes/storage.routes'))
+app.use('/api/framing-data', require('./routes/framingData.routes'))
 
 // Test route
 app.get('/', (req, res) => {
