@@ -102,7 +102,7 @@ export default function ShapeScratchPage() {
                   required
                   value={referenceSrNumber}
                   onChange={(e) => setReferenceSrNumber(e.target.value)}
-                  placeholder="e.g. S10/2026"
+                  placeholder="e.g. 10/2026"
                   className={inp}
                 />
               </div>
