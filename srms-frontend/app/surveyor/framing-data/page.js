@@ -9,9 +9,22 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 
 const inp = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
+const STATUS_LABELS = {
+  received_from_surveyor: 'Received by Controller',
+  sent_to_capturing: 'In Progress (with Capturing)',
+  forwarded_to_surveyor: 'Forwarded to You'
+}
+const STATUS_COLOR = {
+  received_from_surveyor: 'bg-sky-50 text-sky-700',
+  sent_to_capturing: 'bg-amber-50 text-amber-700',
+  forwarded_to_surveyor: 'bg-emerald-50 text-emerald-700'
+}
+
 // Per client: the surveyor enters the Lot Number and Village of the framing
-// data they're requesting. No receiving department or outcome was specified
-// — this is submission + the surveyor's own tracking list for now.
+// data they're requesting. Goes directly to the File Controller (not RMU),
+// Controller sends to Capturing, Capturing marks it and the result
+// automatically comes back to the surveyor too — same route as Shape
+// File Scratch.
 export default function FramingDataPage() {
   const [records, setRecords] = useState([])
   const [fetching, setFetching] = useState(true)
@@ -101,12 +114,29 @@ export default function FramingDataPage() {
           ) : (
             <div className="space-y-2">
               {records.map(r => (
-                <div key={r._id} className="border border-slate-100 rounded-lg px-4 py-3 flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="font-medium text-sm text-slate-800">{r.lotNumber}</span>
-                    <span className="text-xs text-slate-400">{r.village}</span>
+                <div key={r._id} className="border border-slate-100 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="font-medium text-sm text-slate-800">{r.lotNumber}</span>
+                      <span className="text-xs text-slate-400">{r.village}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLOR[r.status]}`}>
+                        {STATUS_LABELS[r.status]}
+                      </span>
+                      {r.capturingOutcome && (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          r.capturingOutcome === 'passed' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          {r.capturingOutcome === 'passed' ? 'Passed' : 'Failed'}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <span className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                  {r.reportUrl && (
+                    <a href={r.reportUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-indigo-600 underline mt-2">
+                      View Report
+                    </a>
+                  )}
                 </div>
               ))}
             </div>

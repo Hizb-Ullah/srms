@@ -100,9 +100,15 @@ export const acceptAccountsPaymentBySr = (data)   => API.post('/accounts/accept-
 // Storage — read-only view of files RMU has dispatched to storage.
 export const getStorageFiles        = ()          => API.get('/storage/files')
 
-// Request Framing Data — surveyor enters Lot Number + Village.
+// Request Framing Data — surveyor enters Lot Number + Village. Follows the
+// same route as Shape File Scratch: goes to File Controller, then Capturing.
 export const submitFramingDataRequest = (data)    => API.post('/framing-data', data)
 export const getMyFramingDataRequests = ()         => API.get('/framing-data/my')
+export const getControllerFramingDataRequests = () => API.get('/framing-data/controller')
+export const sendFramingDataToCapturing = (id)     => API.patch(`/framing-data/${id}/send-to-capturing`)
+export const getCapturingFramingDataQueue = ()     => API.get('/framing-data/capturing/queue')
+export const getCapturingFramingDataCompleted = () => API.get('/framing-data/capturing/completed')
+export const reviewFramingDataCapturing = (id, data) => API.patch(`/framing-data/${id}/review`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 
 // Controller workflow
 export const getControllerFiles     = ()          => API.get('/controller/files')

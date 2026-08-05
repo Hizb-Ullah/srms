@@ -18,15 +18,16 @@ import { TableSkeleton } from '@/components/ui/Skeleton'
 import { VILLAGES, VILLAGE_LOOKUP, LAND_AUTHORITIES } from '@/lib/botswanaData'
 
 
-// "approved" here is the Lot Allocator's own digital sign-off — shown as
-// "Authorised". "Approved" is reserved for the physical survey record's
-// final approval after the RMU/Controller review pipeline.
+// "approved" here is the Lot Allocator's own digital sign-off. The Lot
+// Allocator's own views call this "Authorised" (their action) — but per
+// client, the surveyor-facing views call it "Approved" instead (their
+// request's outcome). "Authorised" stays reserved for DSM-staff-facing views.
 const STATUS_LABELS = {
   pending_allocator_review: 'Pending Review',
   awaiting_payment: 'Awaiting Payment',
   pop_uploaded: 'POP Uploaded',
   payment_confirmed: 'Payment Confirmed',
-  approved: 'Authorised',
+  approved: 'Approved',
   rejected: 'Rejected'
 }
 

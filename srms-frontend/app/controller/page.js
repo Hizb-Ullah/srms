@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import DashboardLayout from '@/app/dashboard-layout'
-import { getControllerFiles, moveControllerStage, returnFileToRmu, getControllerScratchRequests, sendScratchToCapturing } from '@/lib/api'
+import { getControllerFiles, moveControllerStage, returnFileToRmu, getControllerScratchRequests, sendScratchToCapturing, getControllerFramingDataRequests, sendFramingDataToCapturing } from '@/lib/api'
 import toast from 'react-hot-toast'
 import {
   Inbox, Send, FileCheck, FileSearch, CheckCircle,
@@ -80,6 +80,7 @@ function ControllerWorkflowContent() {
 
   const [files, setFiles] = useState([])
   const [scratchRequests, setScratchRequests] = useState([])
+  const [framingRequests, setFramingRequests] = useState([])
   const [fetching, setFetching] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
@@ -93,6 +94,8 @@ function ControllerWorkflowContent() {
       setFiles(res.data.data)
       const scRes = await getControllerScratchRequests()
       setScratchRequests(scRes.data.data)
+      const fdRes = await getControllerFramingDataRequests()
+      setFramingRequests(fdRes.data.data)
     } catch {
       toast.error('Failed to load controller files')
     } finally {
@@ -104,6 +107,19 @@ function ControllerWorkflowContent() {
     setActionLoading(id)
     try {
       await sendScratchToCapturing(id)
+      toast.success('Sent to Capturing')
+      fetchFiles()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Action failed')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleSendFramingToCapturing = async (id) => {
+    setActionLoading(id)
+    try {
+      await sendFramingDataToCapturing(id)
       toast.success('Sent to Capturing')
       fetchFiles()
     } catch (err) {
@@ -344,6 +360,19 @@ function ControllerWorkflowContent() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => router.push('/controller?section=framing-data')}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
+              section === 'framing-data' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Framing Data
+            {framingRequests.filter(f => f.status === 'received_from_surveyor').length > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                {framingRequests.filter(f => f.status === 'received_from_surveyor').length}
+              </span>
+            )}
+          </button>
         </div>
 
         {section === 'scratch' ? (
@@ -395,6 +424,60 @@ function ControllerWorkflowContent() {
                       <button
                         onClick={() => handleSendToCapturing(s._id)}
                         disabled={actionLoading === s._id}
+                        className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-50 mt-3"
+                      >
+                        <Send size={14} /> Send to Capturing
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : section === 'framing-data' ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Framing Data Requests</h3>
+            {fetching ? (
+              <TableSkeleton rows={3} />
+            ) : framingRequests.length === 0 ? (
+              <p className="text-slate-500 text-sm">No framing data requests yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {framingRequests.map(f => (
+                  <div key={f._id} className="border border-slate-100 rounded-xl p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="font-medium text-sm text-slate-800">{f.lotNumber}</span>
+                        <span className="text-xs text-slate-400">{f.village}</span>
+                        <span className="text-xs text-slate-400">{f.requestedBy?.name || '—'}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          f.status === 'received_from_surveyor' ? 'bg-sky-50 text-sky-700' :
+                          f.status === 'sent_to_capturing' ? 'bg-amber-50 text-amber-700' :
+                          'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          {f.status === 'received_from_surveyor' ? 'Received from Surveyor' :
+                            f.status === 'sent_to_capturing' ? 'In Progress (Capturing)' : 'Forwarded to Surveyor'}
+                        </span>
+                        {f.capturingOutcome && (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            f.capturingOutcome === 'passed' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {f.capturingOutcome === 'passed' ? 'Passed' : 'Failed'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {f.reportUrl && (
+                      <a href={f.reportUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs text-indigo-600 underline mt-2">
+                        View Capturing Report
+                      </a>
+                    )}
+
+                    {f.status === 'received_from_surveyor' && (
+                      <button
+                        onClick={() => handleSendFramingToCapturing(f._id)}
+                        disabled={actionLoading === f._id}
                         className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-violet-700 active:scale-[0.98] transition disabled:opacity-50 mt-3"
                       >
                         <Send size={14} /> Send to Capturing
